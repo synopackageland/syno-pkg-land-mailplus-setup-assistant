@@ -1590,8 +1590,8 @@ onUnmounted(() => {
 
 .msa-cf-grid {
  display: grid;
- grid-template-columns: minmax(88px, 90px) minmax(0, 1.01fr) minmax(0, 1fr);
- gap: 42px;
+ grid-template-columns: minmax(140px, 162px) minmax(0, 1.02fr) minmax(0, 1fr);
+ gap: 38px;
  align-items: center;
  position: relative;
 }
@@ -1605,13 +1605,22 @@ onUnmounted(() => {
 .msa-cf-zone-title {
  position: absolute;
  top: 9px;
- left: 12px;
+ left: 10px;
+ right: 10px;
  display: inline-flex;
  align-items: center;
  gap: 5px;
  font-size: var(--ui-font-size-xs);
  font-weight: var(--ui-font-weight-strong);
  line-height: 1.2;
+ min-width: 0;
+}
+
+.msa-cf-zone-title > span {
+ min-width: 0;
+ overflow: hidden;
+ text-overflow: ellipsis;
+ white-space: nowrap;
 }
 
 .msa-cf-zone-ico {
@@ -1627,7 +1636,7 @@ onUnmounted(() => {
 .msa-cf-zone-internet {
  background: var(--ui-surface-subtle);
  border: 1.5px dashed var(--ui-border-strong);
- padding: 28px 5px 12px;
+ padding: 30px 8px 12px;
 }
 
 .msa-cf-zone-internet .msa-cf-zone-title {
@@ -1708,7 +1717,7 @@ onUnmounted(() => {
 .msa-cf-node-stack {
  flex-direction: column;
  text-align: center;
- padding: 10px 5px;
+ padding: 10px 8px;
  gap: 6px;
 }
 
@@ -1734,8 +1743,10 @@ onUnmounted(() => {
  top: 53%;
  transform: translateY(-50%);
  z-index: 8;
- width: 150px;
- padding: 7px 9px;
+ width: max-content;
+ min-width: 168px;
+ max-width: calc(100% - 4px);
+ padding: 7px 10px;
  border-color: var(--ui-info);
  background: var(--ui-surface);
  box-shadow: var(--ui-shadow-card-hover);
@@ -2143,6 +2154,13 @@ onUnmounted(() => {
  animation: msaCfPlane 700ms ease-in-out infinite;
 }
 
+@container (max-width: 760px) {
+ .msa-cf-grid {
+  grid-template-columns: minmax(126px, 140px) minmax(0, 1.02fr) minmax(0, 1fr);
+  gap: 28px;
+ }
+}
+
 /* Compact / mobile container layout (390px viewport and narrow windows) */
 @container (max-width: 579px) {
  .msa-cf-stage {
@@ -2191,8 +2209,9 @@ onUnmounted(() => {
   left: 50%;
   top: -28px;
   transform: translateX(-50%);
-  width: auto;
+  width: max-content;
   min-width: 186px;
+  max-width: calc(100% - 16px);
  }
  .msa-cf-tunnel-gate.is-active-in {
   transform: translateX(-50%) scale(1.01);
