@@ -311,7 +311,7 @@ func TestRemoveStopsWhenMailPlusCannotBeRestored(t *testing.T) {
 	r := removable(t, newInboundCloud(), setup.ReceiveAddresses, "alice@example.test")
 	r.mp.fail = setup.ErrUnavailable
 	view, err := r.s.Remove(ctx, r.env, r.id, false, false)
-	if err != nil || view.Removal.State != "failed" || view.Removal.CauseKey != "mail.remove.cause.nas" {
+	if err != nil || view.Removal.State != "failed" || view.Removal.CauseKey != "mail.remove.cause.mailplus" || view.Removal.Profile != "" {
 		t.Fatalf("removal: %+v %v", view.Removal, err)
 	}
 	// Cloudflare was undone; the relay still runs for the route MailPlus still uses.
@@ -323,6 +323,46 @@ func TestRemoveStopsWhenMailPlusCannotBeRestored(t *testing.T) {
 	r.mp.fail = nil
 	if view, err := r.s.Remove(ctx, r.env, r.id, false, false); err != nil || view.Removal.State != "done" || r.mp.route != "direct" {
 		t.Fatalf("retry: %+v %v", view.Removal, err)
+	}
+}
+
+// A MailPlus restore the executor refuses for want of a grant (a mail-write
+// grant DSM no longer honours, or one never given) says which access is
+// missing, so the Overview offers "Allow access" as the setup does; once
+// allowed, the removal goes on where it stopped.
+func TestRemoveAsksForAccessWhenMailPlusWriteIsNotAllowed(t *testing.T) {
+	ctx := context.Background()
+	r := removable(t, newInboundCloud(), setup.ReceiveAddresses, "alice@example.test")
+	r.mp.fail = core.AuthorityRequired{Profile: "mail-write"}
+	view, err := r.s.Remove(ctx, r.env, r.id, false, false)
+	if err != nil || view.Removal.State != "failed" || view.Removal.CauseKey != "mail.remove.cause.authority" || view.Removal.Profile != "mail-write" {
+		t.Fatalf("removal: %+v %v", view.Removal, err)
+	}
+	r.mp.fail = nil
+	view, err = r.s.Remove(ctx, r.env, r.id, false, false)
+	if err != nil || view.Removal.State != "done" || view.Removal.Profile != "" || r.mp.route != "direct" {
+		t.Fatalf("retry: %+v %v", view.Removal, err)
+	}
+}
+
+// Each NAS-side step names itself: MailPlus Server, the forwarding service,
+// or an administrator's own sign-in.
+func TestRemoveCauseNamesTheNASStep(t *testing.T) {
+	for _, c := range []struct {
+		err    error
+		target string
+		want   string
+	}{
+		{setup.ErrUnavailable, "mailplus.delivery", "mail.remove.cause.mailplus"},
+		{setup.ErrUnavailable, "mailplus.dkim", "mail.remove.cause.mailplus"},
+		{setup.ErrUnavailable, "homekeeper.relay", "mail.remove.cause.relay"},
+		{core.AuthorityRequired{Profile: "mail-write"}, "mailplus.dkim", "mail.remove.cause.authority"},
+		{core.ErrNoAdmin, "mailplus.delivery", "mail.remove.cause.admin"},
+		{setup.ErrUnavailable, "cloudflare.worker", "mail.inbound.cause.cloudflare"},
+	} {
+		if got := removeCause(c.err, c.target); got != c.want {
+			t.Errorf("removeCause(%v, %s) = %s, want %s", c.err, c.target, got, c.want)
+		}
 	}
 }
 

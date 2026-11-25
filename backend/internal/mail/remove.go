@@ -45,7 +45,11 @@ type RemoveRun struct {
 	Total int    `json:"total"`
 	// CauseKey (failed): why it stopped, a catalog key.
 	CauseKey string `json:"causeKey,omitempty"`
-	At       int64  `json:"at,omitempty"`
+	// Profile (failed, cause mail.remove.cause.authority): the DSM access
+	// profile the refused step needs (mail-write), so the Overview offers
+	// "Allow access" for it, as the setup does.
+	Profile string `json:"profile,omitempty"`
+	At      int64  `json:"at,omitempty"`
 	// Locked (done): receiving records Cloudflare would not delete because
 	// Email Routing manages them (1046); they were left in place. AccountID
 	// and Zone (the zone's name, when read) build the dashboard link where
@@ -318,6 +322,12 @@ func (s *InboundSync) remove(ctx context.Context, env core.Env, rec keptRecord, 
 		cancel()
 		if err != nil {
 			stepErr = fmt.Errorf("%s: %w", c.Target, err)
+			var authority core.AuthorityRequired
+			if errors.As(err, &authority) {
+				// The executor refused the step for want of a grant (never
+				// sent): name the profile so the administrator can allow it.
+				out.Profile = authority.Profile
+			}
 			return fail(removeCause(err, c.Target))
 		}
 		rec.Applied = rec.Applied[:len(rec.Applied)-1]
@@ -432,9 +442,18 @@ func undoError(err error, code string) error {
 	return setup.ErrUnavailable
 }
 
+// removeCause names why a step stopped, as a catalog key. A DSM step the
+// executor refused for want of a grant (core.AuthorityRequired: a mail-write
+// grant DSM no longer honours, or one never given) is its own cause, so the
+// Overview offers "Allow access" rather than a bare "try again"; other NAS
+// steps say whether MailPlus Server or the forwarding service stopped them.
 func removeCause(err error, target string) string {
 	var refusedErr setup.PermissionRefused
 	switch {
+	case errors.Is(err, core.ErrAuthorityRequired):
+		return "mail.remove.cause.authority"
+	case errors.Is(err, core.ErrNoAdmin):
+		return "mail.remove.cause.admin"
 	case errors.As(err, &refusedErr), errors.Is(err, setup.ErrTokenInvalid):
 		return "mail.inbound.cause.token"
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded), errors.Is(err, setup.ErrUnconfirmed):
@@ -443,6 +462,10 @@ func removeCause(err error, target string) string {
 		return "mail.remove.cause.changed"
 	case strings.HasPrefix(target, "cloudflare."):
 		return "mail.inbound.cause.cloudflare"
+	case strings.HasPrefix(target, "mailplus."):
+		return "mail.remove.cause.mailplus"
+	case target == "homekeeper.relay":
+		return "mail.remove.cause.relay"
 	}
 	return "mail.remove.cause.nas"
 }

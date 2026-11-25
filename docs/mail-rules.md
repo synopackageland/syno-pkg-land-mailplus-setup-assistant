@@ -495,6 +495,16 @@ written. A resource already gone counts as done.
   interruption) keeps what is left; pressing again goes on from there and
   never repeats a done step. At the end the sealed token is deleted and the
   record cleared, so the setup leaves the Overview.
+- **A NAS step that needs access (build 55).** Restoring MailPlus settings
+  writes through the administrator's `mail-write` grant, like the apply. The
+  grant may never have been given on this NAS, or DSM may no longer honour it
+  (the executor refuses the delegation; the App then marks the grant
+  unavailable). The executor refuses such a call unsent, so nothing changed:
+  the run stops with `mail.remove.cause.authority` and `removal.profile`, and
+  the Overview says which access is missing and offers 「允許存取」 beside
+  「再試一次」, as the setup does. Other NAS stops name their step:
+  `mail.remove.cause.mailplus` (MailPlus Server), `mail.remove.cause.relay`
+  (the forwarding service), `mail.remove.cause.admin` (not an administrator).
 - Email Routing on the zone, the apex's locked MX/SPF and every other DNS record
   stay as they are (a subdomain's receiving records: below), **unless** this setup enabled Email Routing on the zone apex
   itself (the journal's `routing` step, no subdomain): then the dialog offers

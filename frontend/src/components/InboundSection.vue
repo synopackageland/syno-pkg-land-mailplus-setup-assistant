@@ -24,12 +24,15 @@
  * Cloudflare's Email Routing page, with a warning that turning routing off
  * there may stop receiving for the whole domain. Every finished removal tells
  * the Overview, which reads the relay's state again (removal may turn it off).
+ * A removal stopped because MailPlus Server access was not allowed offers
+ * "Allow access" beside Try again.
  */
 import {computed, onUnmounted, ref} from 'vue'
 import {Button, Callout, Checkbox, Dialog, Form, FormItem, Input, Progress, SettingsSection, Space, Tooltip} from '@synopackageland/ui'
 import {errorCode, pause, useAssistant} from '../api/assistant'
 import {cloudflareTokenUrl, emailRoutingUrl, openCloudflare} from '../api/cloudflare'
-import type {AssistantError, KeptView, LockedRecord} from '../api/types'
+import {isProfile, profileName} from '../api/authority'
+import type {AssistantError, AuthorityProfileName, KeptView, LockedRecord, RemoveRun} from '../api/types'
 import TokenDialog from './TokenDialog.vue'
 
 const k = useAssistant()
@@ -139,6 +142,21 @@ async function remove(s: KeptView, routing: boolean) {
   if(wantsToken(e)) set(asking, s.id, 'remove')
   else set(errors, s.id, e)
  } finally {set(busy, s.id, false)}
+}
+/**
+ * A removal step the executor refused for want of a grant (a MailPlus Server
+ * restore needs MailPlus change access, which may never have been allowed or
+ * which DSM no longer honours): the line names the access and offers
+ * "Allow access", as the setup does; Try again then goes on where it stopped.
+ */
+const accessCause = 'mail.remove.cause.authority'
+function accessFor(r: RemoveRun): AuthorityProfileName[] | undefined {
+ return r.causeKey === accessCause && isProfile(r.profile) ? [r.profile] : undefined
+}
+function removeFailed(r: RemoveRun): string {
+ const access = accessFor(r)
+ if(access) return k.t('ui.remove.access', {profile: k.t(profileName(access[0]!))})
+ return k.t('ui.remove.failed', {cause: k.t(r.causeKey ?? 'mail.inbound.cause.cloudflare')})
 }
 const lockedLine = (l: LockedRecord) => `${l.type} ${l.name} ${l.content}`
 
@@ -295,8 +313,11 @@ function tokenAsked(s: KeptView) {return !s.tokenInvalid && (!!asking.value[s.id
     {{ k.t('ui.inbound.pending', {count: s.last.pending, list: (s.last.addresses ?? []).join(', ')}) }}
    </div>
    <Callout v-if="!busy[s.id] && s.removal?.state === 'failed' && s.removal.causeKey !== tokenCause" tone="warning" :dismissible="false" data-remove-failed>
-    <span role="alert">{{ k.t('ui.remove.failed', {cause: k.t(s.removal.causeKey ?? 'mail.inbound.cause.cloudflare')}) }}</span>
-    <template #actions><Button variant="secondary" data-remove-retry @click="remove(s, !!routingChoice[s.id])">{{ k.t('ui.inbound.retry') }}</Button></template>
+    <span role="alert">{{ removeFailed(s.removal) }}</span>
+    <template #actions>
+     <Button v-if="accessFor(s.removal)" variant="secondary" data-remove-access @click="k.askAccess(accessFor(s.removal))">{{ k.t('ui.access.needed') }}</Button>
+     <Button variant="secondary" data-remove-retry @click="remove(s, !!routingChoice[s.id])">{{ k.t('ui.inbound.retry') }}</Button>
+    </template>
    </Callout>
    <Callout v-if="errors[s.id]" tone="danger" :dismissible="false" data-sync-error>
     <span role="alert">{{ k.error(errors[s.id]) }}</span>
