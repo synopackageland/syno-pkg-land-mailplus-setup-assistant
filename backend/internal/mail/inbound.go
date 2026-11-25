@@ -706,6 +706,10 @@ type inboundCheck struct {
 	Since int64  `json:"since"`
 	MsgID string `json:"msgId,omitempty"`
 	Sent  bool   `json:"sent"`
+	// Plan: Email Sending refused the check mail because the account is on
+	// Workers Free (only verified destination addresses). Nothing was
+	// accepted, so the next check sends it again.
+	Plan bool `json:"plan,omitempty"`
 }
 
 // verifyInbound reads back every inbound resource and looks for delivery
@@ -794,9 +798,10 @@ func (c *cloudflareAdapter) verifyInbound(ctx context.Context, env core.Env, req
 		check.Since = now().Unix()
 	}
 	address, code := in.Addresses[0], InboundCheckCode(r.SessionID)
-	// D4: with Email Sending set up by this flow, send the check mail once.
-	if r.Decision.Send == setup.RelaySend && !check.Sent {
-		check.Sent = true
+	// D4: with Email Sending set up by this flow, send the check mail once
+	// (again only after a Workers Free refusal, which accepted nothing).
+	if r.Decision.Send == setup.RelaySend && (!check.Sent || check.Plan) {
+		check.Sent, check.Plan = true, false
 		if err := env.KV.Put(ctx, "mail.wiring", key, check); err != nil {
 			return true, false, []core.Finding{finding(core.SeverityWarning, "mail.setup.inbound.logUnknown", nil)}
 		}
@@ -805,6 +810,7 @@ func (c *cloudflareAdapter) verifyInbound(ctx context.Context, env core.Env, req
 		if err == nil {
 			check.MsgID = id
 		}
+		check.Plan = cloudflare.RecipientPlanRestricted(err)
 	}
 	if err := env.KV.Put(ctx, "mail.wiring", key, check); err != nil {
 		return true, false, []core.Finding{finding(core.SeverityWarning, "mail.setup.inbound.logUnknown", nil)}
@@ -831,5 +837,13 @@ func (c *cloudflareAdapter) verifyInbound(ctx context.Context, env core.Env, req
 		case <-time.After(5 * time.Second):
 		}
 	}
-	return true, false, []core.Finding{finding(core.SeverityWarning, "mail.setup.inbound.checkMail", map[string]string{"address": address, "code": code})}
+	out := []core.Finding{finding(core.SeverityWarning, "mail.setup.inbound.checkMail", map[string]string{"address": address, "code": code})}
+	if check.Plan {
+		// Workers Free: this setup cannot send to anyone but the account's
+		// verified addresses. Named first, so it never looks done.
+		plan := finding(core.SeverityWarning, "mail.setup.inbound.sendingPlan", nil)
+		plan.ID = "mail.setup.sendingPlan" // its own card beside the check mail's
+		out = append([]core.Finding{plan}, out...)
+	}
+	return true, false, out
 }

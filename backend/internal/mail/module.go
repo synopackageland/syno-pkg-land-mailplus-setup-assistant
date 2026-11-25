@@ -126,6 +126,7 @@ var relayErrors = map[string]bool{
 	"mail.relay.state_read": true, "mail.relay.listen_failed": true,
 	"mail.relay.accept_failed": true, "mail.relay.token_unavailable": true,
 	"mail.relay.protocol_line": true, "mail.relay.size_limit": true,
+	relay.PlanRefusalCode: true,
 }
 
 // The detector requires an actual domain. Discover it through the authorized
@@ -956,8 +957,10 @@ func refused(err error) bool {
 // readRefused classifies one sign-in read made with a token Cloudflare
 // accepted: HTTP 403 (whatever its code, 9109 included) means that read's
 // permission is missing; any other failure, 401 included, is unavailable.
-// sendingError names a plan refusal of Email Sending (Workers Free) in plain
-// words; any other failure stays unavailable.
+// sendingError names a plan refusal of Email Sending in plain words; any
+// other failure stays unavailable. Workers Free now onboards a sending domain
+// and refuses only recipients that are not verified destination addresses
+// (code 10208): verifyInbound names that from the check mail.
 func sendingError(err error) error {
 	if cloudflare.PlanLimited(err) {
 		return setup.ErrSendingPlan

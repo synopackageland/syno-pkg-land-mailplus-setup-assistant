@@ -17,9 +17,10 @@ export function smtpTestUrl(ip?: string): string {
 }
 
 /**
- * Cloudflare's Email Service pricing page (receiving free on every plan;
- * sending needs Workers Paid, 3,000 mails a month included). Checked by the
- * owner on 2026-11-12; the copy says Cloudflare's own page decides.
+ * Cloudflare's Email Service pricing page (receiving free on every plan; on
+ * Workers Free, sending only to the account's verified destination addresses;
+ * sending to anyone needs Workers Paid, 3,000 mails a month included; page
+ * dated 2026-11-24). The copy says Cloudflare's own page decides.
  */
 export const CLOUDFLARE_PRICING_URL = 'https://developers.cloudflare.com/email-service/platform/pricing/'
 

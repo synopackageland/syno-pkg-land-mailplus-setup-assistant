@@ -43,9 +43,42 @@ func cloudflareUpstream() *smtpUpstream {
 }
 
 // Never include peer text or transport errors: either may echo a credential.
+// enhanced is only the RFC 3463 status code of a refusal (digits and dots,
+// validated), never the text after it.
 type upstreamError struct {
-	stage string
-	code  int
+	stage    string
+	code     int
+	enhanced string
+}
+
+// enhancedStatus returns the RFC 3463 enhanced status code that starts an
+// SMTP reply text ("5.7.1 ..."), or "" when there is none.
+func enhancedStatus(text string) string {
+	word, _, _ := strings.Cut(text, " ")
+	parts := strings.Split(word, ".")
+	if len(parts) != 3 || len(parts[0]) != 1 || parts[0] < "2" || parts[0] > "5" {
+		return ""
+	}
+	for _, part := range parts[1:] {
+		if len(part) < 1 || len(part) > 3 {
+			return ""
+		}
+		for _, r := range part {
+			if r < '0' || r > '9' {
+				return ""
+			}
+		}
+	}
+	return word
+}
+
+// RecipientPlanRefused: the upstream refused a recipient with 550 5.7.1 at
+// RCPT TO. Cloudflare documents this as the Workers Free refusal of any
+// recipient that is not one of the account's verified destination addresses
+// (sending to anyone needs Workers Paid). Not yet observed live.
+func RecipientPlanRefused(err error) bool {
+	var u upstreamError
+	return errors.As(err, &u) && u.stage == "rcpt" && u.code == 550 && u.enhanced == "5.7.1"
 }
 
 func (e upstreamError) Error() string {
@@ -76,12 +109,12 @@ func response(p *textproto.Conn, stage string, want int) error {
 	for total := 0; total < 64<<10; {
 		line, err := readLine(p)
 		if err != nil || len(line) < 4 {
-			return upstreamError{stage, 0}
+			return upstreamError{stage: stage, code: 0}
 		}
 		total += len(line) + 2
 		n, err := strconv.Atoi(line[:3])
 		if err != nil || n < 100 || n > 599 || (code != 0 && n != code) {
-			return upstreamError{stage, 0}
+			return upstreamError{stage: stage, code: 0}
 		}
 		code = n
 		switch line[3] {
@@ -91,17 +124,17 @@ func response(p *textproto.Conn, stage string, want int) error {
 			if (want < 100 && code/10 == want) || code == want {
 				return nil
 			}
-			return upstreamError{stage, code}
+			return upstreamError{stage: stage, code: code, enhanced: enhancedStatus(line[4:])}
 		default:
-			return upstreamError{stage, 0}
+			return upstreamError{stage: stage, code: 0}
 		}
 	}
-	return upstreamError{stage, 0}
+	return upstreamError{stage: stage, code: 0}
 }
 
 func command(p *textproto.Conn, stage string, want int, format string, args ...any) error {
 	if err := p.PrintfLine(format, args...); err != nil {
-		return upstreamError{stage, 0}
+		return upstreamError{stage: stage, code: 0}
 	}
 	return response(p, stage, want)
 }
@@ -117,13 +150,13 @@ type smtpTransaction struct {
 func (t *smtpTransaction) Write(b []byte) (int, error) {
 	n, err := t.writer.Write(b)
 	if err != nil {
-		return n, upstreamError{"stream", 0}
+		return n, upstreamError{stage: "stream", code: 0}
 	}
 	return n, nil
 }
 func (t *smtpTransaction) Commit() error {
 	if err := t.writer.Close(); err != nil {
-		return upstreamError{"commit", 0}
+		return upstreamError{stage: "commit", code: 0}
 	}
 	return response(t.p, "commit", 250)
 }
@@ -135,7 +168,7 @@ func (t *smtpTransaction) Close() error {
 func (u *smtpUpstream) connect(ctx context.Context, token string) (*smtpTransaction, error) {
 	host, _, err := net.SplitHostPort(u.address)
 	if err != nil {
-		return nil, upstreamError{"address", 0}
+		return nil, upstreamError{stage: "address", code: 0}
 	}
 	timeout := u.timeout
 	if timeout <= 0 {
@@ -151,7 +184,7 @@ func (u *smtpUpstream) connect(ctx context.Context, token string) (*smtpTransact
 		raw, err = (&net.Dialer{}).DialContext(dialCtx, "tcp6", u.address)
 	}
 	if err != nil {
-		return nil, upstreamError{"connect", 0}
+		return nil, upstreamError{stage: "connect", code: 0}
 	}
 	deadline := time.Now().Add(timeout)
 	if d, ok := ctx.Deadline(); ok && d.Before(deadline) {
@@ -163,7 +196,7 @@ func (u *smtpUpstream) connect(ctx context.Context, token string) (*smtpTransact
 	t := &smtpTransaction{conn: conn, stop: stop}
 	fail := func(err error) (*smtpTransaction, error) { t.Close(); return nil, err }
 	if conn.HandshakeContext(ctx) != nil {
-		return fail(upstreamError{"tls", 0})
+		return fail(upstreamError{stage: "tls", code: 0})
 	}
 	t.p = protocolConn(conn)
 	if err = response(t.p, "greeting", 220); err != nil {
@@ -192,11 +225,11 @@ func (u *smtpUpstream) Open(ctx context.Context, token, from string, to []string
 	// Envelope values are parsed locally, but keep the transport boundary safe
 	// even for callers other than the local SMTP server.
 	if !safePath(from, true) || len(to) == 0 || len(to) > MaxRecipients {
-		return nil, upstreamError{"envelope", 0}
+		return nil, upstreamError{stage: "envelope", code: 0}
 	}
 	for _, rcpt := range to {
 		if !safePath(rcpt, false) {
-			return nil, upstreamError{"envelope", 0}
+			return nil, upstreamError{stage: "envelope", code: 0}
 		}
 	}
 	t, err := u.connect(ctx, token)

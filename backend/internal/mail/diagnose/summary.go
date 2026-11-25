@@ -84,6 +84,7 @@ var problemRules = map[string]problemRule{
 	"smtp":             {"smtp_off", "mailplus"},
 	"relay_stopped":    {"relay_stopped", "setup"},
 	"token_invalid":    {"token_invalid", "token"},
+	"recipient_plan":   {"recipient_plan", "setup"},
 	"relay_stale":      {"queue_stuck", "mailplus"},
 	"queue_stale":      {"queue_stuck", "mailplus"},
 	"deferred_auth":    {"deliver_auth", "setup"},

@@ -97,6 +97,26 @@ func (s *Service) lastError(err error) {
 	s.status.LastErr = err.Error()
 }
 
+// PlanRefusalCode is the last error after Cloudflare refused a recipient
+// because the account is on Workers Free (RecipientPlanRefused).
+const PlanRefusalCode = "mail.relay.recipient_plan"
+
+// planRefused records a recipient refused by the Workers Free plan: counted
+// as rejected, the fixed plan code as the last error and the time in
+// Info["lastPlanRefusal"], which a later success to another (verified)
+// recipient does not clear.
+func (s *Service) planRefused(ctx context.Context, env core.Env) {
+	at := clock(env)
+	s.count("rejected")
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.status.LastErr = PlanRefusalCode
+	if s.status.Info == nil {
+		s.status.Info = make(map[string]string)
+	}
+	s.status.Info["lastPlanRefusal"] = at.Format(time.RFC3339Nano)
+}
+
 func (s *Service) sent(ctx context.Context, env core.Env) {
 	at := clock(env)
 	s.mu.Lock()

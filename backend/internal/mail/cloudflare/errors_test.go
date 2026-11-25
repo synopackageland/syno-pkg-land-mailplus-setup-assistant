@@ -1,8 +1,10 @@
 package cloudflare
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 )
 
@@ -56,5 +58,36 @@ func TestPlanLimitedNamesPlanRefusals(t *testing.T) {
 	}
 	if PlanLimited(nil) {
 		t.Fatal("nil")
+	}
+}
+
+// Workers Free sends only to the account's verified destination addresses.
+// The REST send refuses any other recipient with HTTP 403, code 10208
+// (email.sending.error.email.recipient_plan_restricted). The fixture follows
+// Cloudflare's documented error table; it was not captured live (no Free
+// account with a zone was available).
+func TestSendRecipientPlanRestricted(t *testing.T) {
+	raw, err := os.ReadFile("testdata/send-recipient-plan-restricted.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := fixture(t, exchange{method: "POST", path: "/accounts/acct/email/sending/send", status: 403, raw: string(raw)})
+	_, err = c.SendMessage(context.Background(), "acct", "admin@mail.example.test", "admin@mail.example.test", "check", "body")
+	if !PlanLimited(err) || !RecipientPlanRestricted(err) || PermissionRefused(err) {
+		t.Fatalf("restricted recipient: %v", err)
+	}
+	// Another plan answer is not the recipient restriction.
+	other := classify(402, []apiIssue{{Code: 1, Message: "payment required"}})
+	if !PlanLimited(other) || RecipientPlanRestricted(other) {
+		t.Fatalf("other plan answer: %v", other)
+	}
+	// An account without Email Sending at all is a plan answer too.
+	if e := classify(403, []apiIssue{{Code: 10105, Message: "email.sending.error.authentication.not_entitled"}}); !PlanLimited(e) || RecipientPlanRestricted(e) {
+		t.Fatalf("not entitled: %v", e)
+	}
+	// A token without Email Sending: Edit stays a permission answer.
+	forbidden := classify(403, []apiIssue{{Code: 10102, Message: "email.sending.error.authentication.forbidden"}})
+	if PlanLimited(forbidden) || RecipientPlanRestricted(forbidden) {
+		t.Fatalf("forbidden: %v", forbidden)
 	}
 }

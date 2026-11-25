@@ -84,6 +84,8 @@ func classify(status int, issues []apiIssue) *Error {
 			}
 		case 1046:
 			e.Kind = ErrManagedDNS
+		case codeRecipientPlanRestricted, codeSendingNotEntitled:
+			e.Kind = ErrPlanLimit
 		}
 	}
 	return e
@@ -132,10 +134,38 @@ func MalformedCredential(err error) bool {
 
 // PlanLimited reports a Cloudflare refusal classified as a plan or
 // entitlement answer (HTTP 402, or a message naming an entitlement, Workers
-// Paid, a plan limit or an upgrade), for example Email Sending on Workers Free.
+// Paid, a plan limit or an upgrade, or code 10208), for example Email Sending
+// to a recipient Workers Free does not allow.
 func PlanLimited(err error) bool {
 	e := asError(err)
 	return e != nil && e.Kind == ErrPlanLimit
+}
+
+// codeRecipientPlanRestricted is Email Sending's REST refusal of a recipient
+// the plan does not allow: on Workers Free, any address that is not one of
+// the account's verified destination addresses (HTTP 403,
+// email.sending.error.email.recipient_plan_restricted). The Workers binding
+// names the same refusal E_RECIPIENT_PLAN_RESTRICTED.
+const codeRecipientPlanRestricted = 10208
+
+// codeSendingNotEntitled: the account is not entitled to Email Sending at all
+// (HTTP 403, email.sending.error.authentication.not_entitled).
+const codeSendingNotEntitled = 10105
+
+// RecipientPlanRestricted reports Email Sending refusing a recipient because
+// the account is on Workers Free, which sends only to its verified
+// destination addresses. Sending to anyone needs Workers Paid.
+func RecipientPlanRestricted(err error) bool {
+	e := asError(err)
+	if e == nil {
+		return false
+	}
+	for _, code := range e.Codes {
+		if code == codeRecipientPlanRestricted {
+			return true
+		}
+	}
+	return false
 }
 
 // PermissionRefused reports a clear missing-permission answer: HTTP 403 whose
