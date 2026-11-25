@@ -20,7 +20,7 @@ const WHOLE = 'e'.repeat(32)
 const VISIBLE = ['ui.inbound.title', 'ui.inbound.body', 'ui.inbound.mode.domain', 'ui.inbound.mode.addresses', 'ui.inbound.hint', 'ui.inbound.lastSync', 'ui.inbound.autoSynced', 'ui.inbound.autoSyncedChanges',
  'ui.inbound.unsynced', 'ui.inbound.autoStopped', 'ui.inbound.held', 'ui.inbound.heldEmpty',
  ...['mailplus', 'stopped', 'changed', 'empty', 'approval'].map(c => `mail.inbound.auto.cause.${c}`),
- 'ui.inbound.sync', 'ui.inbound.syncing', 'ui.inbound.result', 'ui.inbound.inLine', 'ui.inbound.pending', 'ui.inbound.failed', 'ui.inbound.retry',
+ 'ui.inbound.sync', 'ui.inbound.syncInfo', 'ui.inbound.syncInfoLabel', 'ui.inbound.syncing', 'ui.inbound.result', 'ui.inbound.inLine', 'ui.inbound.pending', 'ui.inbound.failed', 'ui.inbound.retry',
  'ui.inbound.tokenTitle', 'ui.inbound.tokenBody', 'ui.inbound.tokenHint', 'ui.inbound.saveToken',
  'mail.inbound.tokenRequired', ...['mailplus', 'token', 'gone', 'interrupted', 'cloudflare'].map(c => `mail.inbound.cause.${c}`),
  'mail.setup.receive.title', 'mail.setup.receive.domain', 'mail.setup.receive.domainBody', 'mail.setup.receive.addresses', 'mail.setup.receive.addressesBody',
@@ -108,6 +108,36 @@ test('opening the Overview syncs nothing: it reads the records and shows each wa
   expect(domain.querySelector('[data-sync]')).toBeNull()
   expect(s.textContent).not.toMatch(JARGON)
  } finally {h.close()}
+})
+
+test('a listed-mailbox row explains Sync mailboxes with an info mark: what it does, once, and when again', async () => {
+ const h = open({'mail.inbound.status': {setups: [kept(), whole]}})
+ try {
+  await settle()
+  const s = h.section()!
+  const addresses = s.querySelector(`[data-inbound="${ID}"]`)!
+  // The mark sits on the row's sync line and is named for screen readers.
+  const mark = addresses.querySelector<HTMLElement>('.msa-kept-main [data-sync-info]')
+  expect(mark).not.toBeNull()
+  const trigger = mark!.matches('button') ? mark! : mark!.querySelector<HTMLElement>('button')!
+  expect(trigger.getAttribute('aria-label')).toBe('關於同步信箱')
+  // Hover or tap shows the plain explanation.
+  trigger.focus(); trigger.dispatchEvent(new PointerEvent('pointerenter', {bubbles: true})); trigger.click()
+  await new Promise(r => setTimeout(r, 400)); await settle()
+  expect(document.body.textContent).toContain(h.catalog['ui.inbound.syncInfo'])
+  // A whole-domain setup has nothing to sync, so no mark.
+  expect(s.querySelector(`[data-inbound="${WHOLE}"] [data-sync-info]`)).toBeNull()
+ } finally {h.close()}
+})
+
+test('the sync explanation says what syncing does, that once is enough, when to sync again, and that automatic sync does it', () => {
+ const en = catalogs.en!['ui.inbound.syncInfo']!
+ expect(en).toMatch(/tells Cloudflare which MailPlus mailboxes should receive mail/)
+ expect(en).toMatch(/One sync is enough/)
+ expect(en).toMatch(/only when mailbox accounts are added or removed/)
+ expect(en).toMatch(/automatic sync is on, it does this for you/)
+ const tw = catalogs['zh-TW']!['ui.inbound.syncInfo']!
+ for(const part of ['哪些 MailPlus 信箱要收信', '同步一次就夠了', '新增或刪除信箱帳號', '自動同步']) expect(tw).toContain(part)
 })
 
 test('no kept setup on Cloudflare: no section', async () => {
