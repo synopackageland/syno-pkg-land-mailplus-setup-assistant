@@ -28,7 +28,7 @@
  * "Allow access" beside Try again.
  */
 import {computed, onUnmounted, ref} from 'vue'
-import {Button, Callout, Checkbox, Dialog, Form, FormItem, Input, Progress, SettingsSection, Space, Tooltip} from '@synopackageland/ui'
+import {Button, Callout, Checkbox, Dialog, Form, FormItem, InfoTip, Input, Progress, SettingsSection, Space, Tooltip} from '@synopackageland/ui'
 import {errorCode, pause, useAssistant} from '../api/assistant'
 import {cloudflareTokenUrl, emailRoutingUrl, openCloudflare} from '../api/cloudflare'
 import {isProfile, profileName} from '../api/authority'
@@ -277,6 +277,9 @@ function tokenAsked(s: KeptView) {return !s.tokenInvalid && (!!asking.value[s.id
       <template v-if="syncedCount(s)"> · <span data-synced>{{ syncedCount(s) }}</span></template>
       <template v-if="freshResult(s)"> · <span role="status" data-sync-result>{{ freshResult(s) }}</span></template>
       <template v-else-if="lastSync(s)"> · <span data-last-sync>{{ lastSync(s) }}</span></template>
+      <!-- What syncing is for and when it is needed again, in plain words (hover, or tap on touch). -->
+      <span v-if="s.receive === 'addresses'" class="msa-sync-info"><InfoTip icon="info" size="small" trigger-action="adaptive"
+       :content="k.t('ui.inbound.syncInfo')" :aria-label="k.t('ui.inbound.syncInfoLabel')" data-sync-info /></span>
      </span>
     </div>
     <div class="msa-kept-actions">

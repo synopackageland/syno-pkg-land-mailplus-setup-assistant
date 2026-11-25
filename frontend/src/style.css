@@ -92,3 +92,7 @@
 /* A removal's records Cloudflare locked: the explanation, the records (monospace), where to go, the warning. */
 [data-ui-app] .msa-locked {display: flex; flex-direction: column; gap: var(--ui-space-2);}
 [data-ui-app] .msa-locked-records {display: flex; flex-direction: column; gap: var(--ui-space-1); font-family: var(--ui-font-mono); font-size: 12px; overflow-wrap: anywhere;}
+/* The info mark after a setup row's muted sync line (InboundSection.vue): a small space before it, centred on the line. */
+[data-ui-app] .msa-sync-info {display: inline-flex; align-items: center; padding-inline-start: var(--ui-space-1); vertical-align: middle;}
+/* A wizard choice: its heading (and hint) over full-width cards. */
+[data-ui-app] .msa-choice {display: flex; flex-direction: column; gap: var(--ui-space-2);}

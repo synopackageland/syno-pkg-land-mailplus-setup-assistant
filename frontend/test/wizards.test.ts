@@ -2009,8 +2009,9 @@ test('setup: an unconfirmed inbound delivery offers Check again, which re-verifi
  try{
   await settle()
   await press('ui.overview.resume')
-  expect(title()).toContain('mail.setup.verificationFailed')
-  expect(dialog().textContent).toContain('mail.setup.inbound.checkMailBody')
+  // Only waiting for the check mail: a neutral wait with what to send, not a warning.
+  expect(title()).toContain('mail.setup.waitMail.headline')
+  expect(dialog().textContent).toContain('mail.setup.waitMail.body')
   // three blocks; Check again is the verification block's header action, apart from the findings and the choice.
   const step=dialog().querySelector('section[data-wizard-step="decision"]')!
   expect([...step.querySelectorAll('.msa-block')]).toEqual(
@@ -2025,6 +2026,111 @@ test('setup: an unconfirmed inbound delivery offers Check again, which re-verifi
   expect(title()).toContain('mail.setup.verified')
   expect(radio('mail.setup.keep').checked).toBe(true)
   expect(dialog().querySelector('[data-check-again]')).toBeNull()
+ }finally{h.close()}
+})
+
+const checkMail={id:'mail.setup.inbound',module:'mail',check:'mail.setup',severity:'warning',titleKey:'mail.setup.inbound.checkMail',whyKey:'mail.setup.inbound.checkMailBody',params:{address:'admin@example.com',code:'MPSA-1A2B3C4D'}}
+const unverified={id:'mail.setup.verification',module:'mail',check:'mail.setup',severity:'warning',titleKey:'mail.setup.verificationFailed',whyKey:'mail.setup.verificationFailedBody',fixWizard:'mail.diagnose'}
+const waiting=(extra:Record<string,unknown>={})=>flow('decision',{resume:true,intent:'both',domain:'example.com',changes:[change],done:1,total:1,verified:false,findings:[checkMail,unverified],...extra})
+
+test('setup: waiting for the check mail is a neutral wait with plain next steps, not a warning or a failure',async()=>{
+ const h=harness({
+  'mail.setup.start':waiting(),
+  'mail.setup.decide':(p:Record<string,unknown>)=>p.choice==='keep'?flow('kept',{changes:[change],verified:false}):flow('rollingBack',{total:1}),
+ })
+ try{
+  await settle()
+  await press('ui.overview.resume')
+  const step=active()
+  expect(step.dataset.wizardStep).toBe('decision')
+  expect(title()).toContain('mail.setup.waitMail.headline')
+  expect(title()).not.toContain('mail.setup.verificationFailed')
+  // No warning card and no generic "incomplete or failed" line while it only waits.
+  expect(step.querySelectorAll('[data-severity]')).toHaveLength(0)
+  expect(step.textContent).not.toContain('mail.setup.verificationFailedBody')
+  expect(step.textContent).not.toContain('ui.severity.warning')
+  // What to send, where, and what next; the address and the code can be copied.
+  const wait=step.querySelector('[data-verify] [data-wait-mail]')!
+  expect(wait).not.toBeNull()
+  for(const text of ['mail.setup.waitMail.body','mail.setup.waitMail.after','mail.setup.waitMail.decide','admin@example.com','MPSA-1A2B3C4D'])expect(wait.textContent).toContain(text)
+  expect(wait.querySelector('[data-copy="address"] code')?.textContent).toBe('admin@example.com')
+  expect(wait.querySelector('[data-copy="code"] code')?.textContent).toBe('MPSA-1A2B3C4D')
+  expect(wait.querySelector('[data-not-yet]')).toBeNull()
+  expect(step.querySelector('[data-verify] [data-check-again]')).not.toBeNull()
+  // The keep/roll back choice still works: nothing picked, Confirm waits, Keep is sent.
+  expect(radio('mail.setup.keep').checked).toBe(false)
+  expect(button('ui.setup.confirmDecision',dialog()).disabled).toBe(true)
+  await choose('mail.setup.keep')
+  await press('ui.setup.confirmDecision')
+  expect(h.params('mail.setup.decide')).toEqual([{id:ID,choice:'keep'}])
+ }finally{h.close()}
+})
+
+test('setup: a Check again that finds no check mail yet says "not arrived yet" and still does not warn',async()=>{
+ const h=harness({
+  'mail.setup.start':waiting(),
+  'mail.setup.decide':flow('verifying',{changes:[change],done:1,total:1,findings:[checkMail,unverified]}),
+  'mail.setup.status':()=>waiting({resume:false}),
+ })
+ try{
+  await settle()
+  await press('ui.overview.resume')
+  await press('ui.setup.checkAgain',active())
+  await tick(2100)
+  const step=active()
+  expect(title()).toContain('mail.setup.waitMail.headline')
+  expect(step.querySelector('[data-wait-mail] [data-not-yet]')?.textContent).toContain('mail.setup.waitMail.notYet')
+  expect(step.querySelectorAll('[data-severity]')).toHaveLength(0)
+ }finally{h.close()}
+})
+
+for(const [name,extra] of [
+ ['a check that really failed (the readback)',{findings:[{...checkMail,titleKey:'mail.setup.inbound.readbackFailed',whyKey:'mail.setup.inbound.readbackFailedBody',params:undefined},unverified]}],
+ ['a timed-out verification',{error:'mail.setup.unconfirmed'}],
+] as const){
+ test(`setup: ${name} still shows the failure wording and its findings`,async()=>{
+  const h=harness({'mail.setup.start':waiting(extra as Record<string,unknown>)})
+  try{
+   await settle()
+   await press('ui.overview.resume')
+   const step=active()
+   expect(title()).toContain('mail.setup.verificationFailed')
+   expect(step.querySelector('[data-wait-mail]')).toBeNull()
+   expect(step.querySelectorAll('[data-severity="warning"]').length).toBeGreaterThan(0)
+   expect(step.textContent).toContain('mail.setup.verificationFailedBody')
+  }finally{h.close()}
+ })
+}
+
+test('setup: the configuration step stacks its blocks, and the receive cards span the step under their label',async()=>{
+ const paths=[
+  {direction:'send',branch:'cloudflare-relay',titleKey:'mail.setup.path.cloudflare-relay',why:[]},
+  {direction:'receive',branch:'cloudflare-routing',titleKey:'mail.setup.path.cloudflare-routing',why:[]},
+ ]
+ const h=harness({'mail.setup.start':flow(),
+  'mail.setup.detect':{done:true,facts:[],branch:{kind:'configure',titleKey:'mail.setup.configuration',needsAccount:false,fields:[],warnings:[],paths,mailboxes:['alice@example.com']}},
+  'mail.setup.receivemodes':{domain:false,domainReason:'mail.setup.receive.subdomain'}})
+ try{
+  await openSetup(h)
+  await choose('mail.setup.intent.both')
+  await press('Next')
+  await answerNetwork()
+  await fillVisible(0,'example.com')
+  await press('Next')
+  await tick()
+  await press('Next')
+  expect(title()).toContain('mail.setup.configurationFor')
+  const step=active()
+  // WizardStep does not space its content: one Space stacks the lines, the details fold and the choice.
+  const stack=step.querySelector('[data-configuration]')
+  expect(stack).not.toBeNull()
+  for(const part of ['[data-consequences]','[data-details]','[data-receive-mode]'])expect(stack!.contains(step.querySelector(part))).toBe(true)
+  // The receive cards: a heading above, the full width of the step, side by side; not a FormItem beside a label column.
+  const item=step.querySelector<HTMLElement>('[data-receive-mode]')!
+  expect(item.closest('[data-ui-form]')).toBeNull()
+  expect(item.querySelector('[data-form-label]')).toBeNull()
+  expect(item.querySelector('[role=heading]')?.textContent).toBe('mail.setup.receive.title')
+  expect(item.querySelector('[role=radiogroup]')?.getAttribute('data-orientation')).toBe('horizontal')
  }finally{h.close()}
 })
 

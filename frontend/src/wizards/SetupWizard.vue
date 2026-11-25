@@ -1044,8 +1044,28 @@ const decided = computed(() => decision.value === 'rollback' || (decision.value 
 const canCheckAgain = computed(() => flow.value?.phase === 'decision' && !flow.value.verified &&
  flow.value.findings.some(f => f.id === 'mail.setup.inbound'))
 const checking = ref(false)
+/**
+ * Waiting for the administrator's check mail: readback passed and the only
+ * open finding is "send a check mail" (plus the generic unverified line the
+ * worker adds to any unverified result). Nothing failed yet, so the step shows
+ * what to do in a neutral tone, not warnings. Any other open finding, or a
+ * flow error (a timeout, a refused write), shows the findings as they are.
+ */
+const waitMail = computed(() => {
+ const f = flow.value
+ if(!f || f.phase !== 'decision' || f.verified || f.error) return undefined
+ const mail = f.findings.find(x => x.id === 'mail.setup.inbound' && x.titleKey === 'mail.setup.inbound.checkMail')
+ if(!mail || f.findings.some(x => x !== mail && x.severity !== 'ok' && x.id !== 'mail.setup.verification')) return undefined
+ return {address: mail.params?.address ?? '', code: mail.params?.code ?? ''}
+})
+/** While waiting, the check mail's instructions replace its finding and the generic line; what passed still shows. */
+const shownFindings = computed(() => waitMail.value ? flow.value!.findings.filter(x => x.severity === 'ok') : flow.value?.findings ?? [])
+/** A Check again the administrator pressed found no check mail yet (still waiting, not failed). */
+const notYet = ref(false)
+watch(() => flow.value?.id, () => {notYet.value = false})
 async function checkAgain() {
  checking.value = true
+ notYet.value = false
  try {
   await guard(async () => {
    let f = await k.call('mail.setup.decide', {id: flow.value!.id, choice: 'verify'})
@@ -1057,7 +1077,10 @@ async function checkAgain() {
     flow.value = f
    }
   })
- } finally {checking.value = false}
+ } finally {
+  checking.value = false
+  notYet.value = !!waitMail.value
+ }
 }
 /** Confirm: Keep moves on to the result; Roll back goes to the applying step to follow the rollback. */
 async function decide(): Promise<WizardGuardResult> {
@@ -1070,6 +1093,7 @@ const decisionTitle = computed(() => {
  const f = flow.value
  if(f?.phase === 'interrupted') return k.t('ui.wizard.failedTitle')
  if(f?.phase === 'failed') return k.t('ui.wizard.failedTitle')
+ if(waitMail.value) return k.t('mail.setup.waitMail.headline')
  return k.t(f?.verified ? 'mail.setup.verified' : 'mail.setup.verificationFailed')
 })
 
@@ -1384,65 +1408,73 @@ const resultTone = computed<WizardResultTone>(() => {
   <WizardStep step-key="configuration" :headline="configurationTitle" :description="branch?.bodyKey ? k.t(branch.bodyKey) : undefined"
    :previous-step-key="() => !viaCloudflare && branch?.needsAccount ? 'account' : 'facts'" next-step-key="preview"
    :next-disabled="fieldsMissing" :pre-enter-next-step="leaveConfiguration">
-   <Callout v-if="tunnelHelp" tone="warning" :dismissible="false" data-tunnel-help>
-    <Space direction="column" spacing="dense">
-     <span role="alert">{{ k.t('mail.setup.tunnelRequiredBody') }}</span>
-     <ol class="msa-tunnel-steps" data-tunnel-steps>
-      <li>{{ k.t('mail.setup.tunnelStepInstall') }}</li>
-      <li>{{ k.t('mail.setup.tunnelStepConnect') }}</li>
-      <li>{{ k.t('mail.setup.tunnelStepPreview') }}</li>
-     </ol>
-     <span>{{ k.t('mail.setup.tunnelPublicDSM') }}</span>
-     <span>{{ k.t('mail.setup.tunnelSendOnly', {send: k.t('mail.setup.intent.send')}) }}</span>
-    </Space>
-    <template #actions><Button variant="primary" data-open-connect-catalog @click="openConnectCatalog">{{ k.t('mail.setup.tunnelOpenConnect') }}</Button></template>
-   </Callout>
-   <Callout v-else-if="errorText" tone="danger" :dismissible="false"><span role="alert">{{ errorText }}</span>
-    <template v-if="planChanged" #actions><Button variant="secondary" data-regenerate :disabled="fieldsMissing || previewing" @click="regenerate">{{ k.t('ui.setup.regeneratePreview') }}</Button></template>
-    <template v-else-if="refusal" #actions><Button variant="secondary" @click="k.askAccess(refusal.code === 'authority_required' && refusal.profile ? [refusal.profile] : undefined)">{{ k.t('ui.access.needed') }}</Button></template>
-   </Callout>
-   <Callout v-if="missingText" tone="warning" :dismissible="false" data-missing-permissions>{{ missingText }}
-    <template #actions>
-     <Button variant="secondary" @click="openCloudflare(tokenUrl)">{{ k.t('mail.setup.cloudflare.create') }}</Button>
-     <Button variant="secondary" data-replace-token @click="replaceToken">{{ k.t('mail.setup.cloudflare.replace') }}</Button>
-    </template>
-   </Callout>
-   <Accordion v-if="tunnelHelp" :items="tunnelHelpFold" data-tunnel-advanced>
-    <template #item-manual-tunnel>{{ k.t('mail.setup.tunnelAdvancedBody') }}</template>
-   </Accordion>
-   <!-- Only what the administrator must know: at most three plain lines; the rest is folded. -->
-   <div v-if="consequences.length" class="msa-lines" role="list" data-consequences>
-    <div v-for="line in consequences" :key="line" role="listitem">{{ line }}</div>
-   </div>
-   <Callout v-if="noMailboxes" tone="warning" :dismissible="false" data-no-mailboxes>{{ k.t('mail.setup.noMailboxes', {domain}) }}
-    <template #actions><Button variant="secondary" data-open-mailplus @click="openApp(MAILPLUS_APP)">{{ k.t('ui.setup.openMailPlusButton') }}</Button></template>
-   </Callout>
-   <Callout v-if="tunnelOptions.length" tone="info" :dismissible="false">{{ k.t('mail.setup.tunnelChoice') }}</Callout>
-   <Accordion v-if="details.length" :items="detailFold" data-details>
-    <template #item-details>
-     <Space direction="column" spacing="dense" role="list">
-      <div v-for="line in details" :key="line" role="listitem" data-detail>{{ line }}</div>
+   <!-- The step stacks its blocks at one rhythm: WizardStep does not space its content. -->
+   <Space direction="column" spacing="regular" data-configuration>
+    <Callout v-if="tunnelHelp" tone="warning" :dismissible="false" data-tunnel-help>
+     <Space direction="column" spacing="dense">
+      <span role="alert">{{ k.t('mail.setup.tunnelRequiredBody') }}</span>
+      <ol class="msa-tunnel-steps" data-tunnel-steps>
+       <li>{{ k.t('mail.setup.tunnelStepInstall') }}</li>
+       <li>{{ k.t('mail.setup.tunnelStepConnect') }}</li>
+       <li>{{ k.t('mail.setup.tunnelStepPreview') }}</li>
+      </ol>
+      <span>{{ k.t('mail.setup.tunnelPublicDSM') }}</span>
+      <span>{{ k.t('mail.setup.tunnelSendOnly', {send: k.t('mail.setup.intent.send')}) }}</span>
      </Space>
+     <template #actions><Button variant="primary" data-open-connect-catalog @click="openConnectCatalog">{{ k.t('mail.setup.tunnelOpenConnect') }}</Button></template>
+    </Callout>
+    <Callout v-else-if="errorText" tone="danger" :dismissible="false"><span role="alert">{{ errorText }}</span>
+     <template v-if="planChanged" #actions><Button variant="secondary" data-regenerate :disabled="fieldsMissing || previewing" @click="regenerate">{{ k.t('ui.setup.regeneratePreview') }}</Button></template>
+     <template v-else-if="refusal" #actions><Button variant="secondary" @click="k.askAccess(refusal.code === 'authority_required' && refusal.profile ? [refusal.profile] : undefined)">{{ k.t('ui.access.needed') }}</Button></template>
+    </Callout>
+    <Callout v-if="missingText" tone="warning" :dismissible="false" data-missing-permissions>{{ missingText }}
+     <template #actions>
+      <Button variant="secondary" @click="openCloudflare(tokenUrl)">{{ k.t('mail.setup.cloudflare.create') }}</Button>
+      <Button variant="secondary" data-replace-token @click="replaceToken">{{ k.t('mail.setup.cloudflare.replace') }}</Button>
+     </template>
+    </Callout>
+    <Accordion v-if="tunnelHelp" :items="tunnelHelpFold" data-tunnel-advanced>
+     <template #item-manual-tunnel>{{ k.t('mail.setup.tunnelAdvancedBody') }}</template>
+    </Accordion>
+    <!-- Only what the administrator must know: at most three plain lines; the rest is folded. -->
+    <div v-if="consequences.length" class="msa-lines" role="list" data-consequences>
+     <div v-for="line in consequences" :key="line" role="listitem">{{ line }}</div>
+    </div>
+    <Callout v-if="noMailboxes" tone="warning" :dismissible="false" data-no-mailboxes>{{ k.t('mail.setup.noMailboxes', {domain}) }}
+     <template #actions><Button variant="secondary" data-open-mailplus @click="openApp(MAILPLUS_APP)">{{ k.t('ui.setup.openMailPlusButton') }}</Button></template>
+    </Callout>
+    <Callout v-if="tunnelOptions.length" tone="info" :dismissible="false">{{ k.t('mail.setup.tunnelChoice') }}</Callout>
+    <Accordion v-if="details.length" :items="detailFold" data-details>
+     <template #item-details>
+      <Space direction="column" spacing="dense" role="list">
+       <div v-for="line in details" :key="line" role="listitem" data-detail>{{ line }}</div>
+      </Space>
+     </template>
+    </Accordion>
+    <Form v-if="branch?.fields?.length">
+     <FormItem v-for="f in branch.fields" :key="f.name" :label="k.t(f.labelKey)" :description="f.hintKey ? k.t(f.hintKey) : undefined" :required-mark="f.required">
+      <Input v-if="f.kind === 'secret'" v-model="values[f.name]" type="password" autocomplete="off" />
+      <Textarea v-else v-model="values[f.name]" />
+     </FormItem>
+    </Form>
+    <!-- Choice cards span the step under a heading, side by side, as on the start, route and decision steps;
+         as a FormItem beside the label column they sat far right of the lines above. -->
+    <div v-if="offerModes" class="msa-choice" data-receive-mode>
+     <div role="heading" aria-level="3" class="msa-subtitle">{{ k.t('mail.setup.receive.title') }}</div>
+     <RadioGroup v-model="receive" variant="card" orientation="horizontal" :options="receiveCards" :disabled="readingModes" :aria-label="k.t('mail.setup.receive.title')" />
+    </div>
+    <div v-if="tunnelOptions.length" class="msa-choice" data-tunnel-choice>
+     <div role="heading" aria-level="3" class="msa-subtitle">{{ k.t('mail.setup.tunnel') }}</div>
+     <div class="msa-quiet">{{ k.t('mail.setup.tunnelHint') }}</div>
+     <RadioGroup v-model="tunnel" variant="card" :options="tunnelCards" :aria-label="k.t('mail.setup.tunnel')" />
+    </div>
+    <div v-if="branch?.fields?.some(f => f.kind === 'secret')" class="msa-quiet">{{ k.t('ui.setup.secretNote') }}</div>
+    <template v-if="previewing">
+     <Progress indeterminate :label="k.t('ui.setup.previewProgress')" />
+     <div class="msa-quiet" aria-live="polite" data-preview-wait>{{ k.t('ui.wait.elapsed', {seconds: previewWait.seconds.value}) }}</div>
+     <div v-if="previewWait.seconds.value >= SLOW_AFTER" class="msa-quiet">{{ k.t('ui.wait.slow') }}</div>
     </template>
-   </Accordion>
-   <Form>
-    <FormItem v-for="f in branch?.fields ?? []" :key="f.name" :label="k.t(f.labelKey)" :description="f.hintKey ? k.t(f.hintKey) : undefined" :required-mark="f.required">
-     <Input v-if="f.kind === 'secret'" v-model="values[f.name]" type="password" autocomplete="off" />
-     <Textarea v-else v-model="values[f.name]" />
-    </FormItem>
-    <FormItem v-if="offerModes" :label="k.t('mail.setup.receive.title')" required-mark data-receive-mode>
-     <RadioGroup v-model="receive" variant="card" :options="receiveCards" :disabled="readingModes" />
-    </FormItem>
-    <FormItem v-if="tunnelOptions.length" :label="k.t('mail.setup.tunnel')" :description="k.t('mail.setup.tunnelHint')" required-mark data-tunnel-choice>
-     <RadioGroup v-model="tunnel" variant="card" :options="tunnelCards" />
-    </FormItem>
-   </Form>
-   <div v-if="branch?.fields?.some(f => f.kind === 'secret')" class="msa-quiet">{{ k.t('ui.setup.secretNote') }}</div>
-   <template v-if="previewing">
-    <Progress indeterminate :label="k.t('ui.setup.previewProgress')" />
-    <div class="msa-quiet" aria-live="polite" data-preview-wait>{{ k.t('ui.wait.elapsed', {seconds: previewWait.seconds.value}) }}</div>
-    <div v-if="previewWait.seconds.value >= SLOW_AFTER" class="msa-quiet">{{ k.t('ui.wait.slow') }}</div>
-   </template>
+   </Space>
   </WizardStep>
 
   <WizardStep step-key="preview" :headline="previewTitle"
@@ -1515,14 +1547,33 @@ const resultTone = computed<WizardResultTone>(() => {
     <section v-if="flow?.changes.length" class="msa-block" data-applied>
      <ChangeList :changes="flow.changes" />
     </section>
-    <section v-if="flow?.findings.length || canCheckAgain || checking" class="msa-block" data-verify>
+    <section v-if="flow?.findings.length || canCheckAgain || checking" class="msa-block" data-verify :data-waiting="waitMail ? '' : undefined">
      <div class="msa-block-head">
       <div role="heading" aria-level="3" class="msa-subtitle">{{ k.t('ui.setup.verifyFindings') }}</div>
       <Button v-if="canCheckAgain || checking" variant="secondary" data-check-again :disabled="checking" @click="checkAgain">{{ k.t('ui.setup.checkAgain') }}</Button>
      </div>
      <Progress v-if="checking" indeterminate :label="k.t('ui.setup.verifying')" />
-     <div v-if="flow?.findings.length" class="msa-findings">
-      <FindingCard v-for="f in flow.findings" :key="f.id" :finding="f" />
+     <!-- Waiting for the check mail: what to send, where, and what then; no warning until a check really fails. -->
+     <Callout v-if="waitMail" tone="info" :dismissible="false" :title="k.t('mail.setup.waitMail.title')" data-wait-mail>
+      <div class="msa-zone-help">
+       <div>{{ k.t('mail.setup.waitMail.body') }}</div>
+       <div class="msa-copy-values">
+        <div class="msa-copy-value" data-copy="address">
+         <span class="msa-copy-label">{{ k.t('mail.setup.waitMail.to') }}</span>
+         <span class="msa-copy-text"><code>{{ waitMail.address }}</code><CopyButton :text="waitMail.address" :label="k.t('mail.setup.zone.help.copy')" :words="{copied: k.t('mail.setup.zone.help.copied')}" size="sm" /></span>
+        </div>
+        <div class="msa-copy-value" data-copy="code">
+         <span class="msa-copy-label">{{ k.t('mail.setup.waitMail.subject') }}</span>
+         <span class="msa-copy-text"><code>{{ waitMail.code }}</code><CopyButton :text="waitMail.code" :label="k.t('mail.setup.zone.help.copy')" :words="{copied: k.t('mail.setup.zone.help.copied')}" size="sm" /></span>
+        </div>
+       </div>
+       <div>{{ k.t('mail.setup.waitMail.after') }}</div>
+       <div v-if="notYet && !checking" role="status" data-not-yet>{{ k.t('mail.setup.waitMail.notYet') }}</div>
+       <div class="msa-quiet">{{ k.t('mail.setup.waitMail.decide') }}</div>
+      </div>
+     </Callout>
+     <div v-if="shownFindings.length" class="msa-findings">
+      <FindingCard v-for="f in shownFindings" :key="f.id" :finding="f" />
      </div>
     </section>
     <section class="msa-block" data-decide>
