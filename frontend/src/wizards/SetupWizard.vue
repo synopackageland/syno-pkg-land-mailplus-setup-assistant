@@ -57,7 +57,7 @@ import {SLOW_AFTER, useElapsed} from '../api/elapsed'
 import type {Answers, AssistantError, BranchView, CloudView, CloudZone, DetectView, Fact, FlowView, Intent, Permission, PreviewView, ReceiveMode, ReceiveModes, Route, Source, TunnelOption} from '../api/types'
 import {isProfile, profileName} from '../api/authority'
 import {cloudflareTokenUrl, openCloudflare, registerDomainUrl, tokenPermissionCodes} from '../api/cloudflare'
-import {smtpTestUrl} from '../api/links'
+import {smtpTestUrl, SYNO_CONNECT_CATALOG_URL} from '../api/links'
 import MailWayPicture from '../components/MailWayPicture.vue'
 import PlanNote from '../components/PlanNote.vue'
 import FactList from '../components/FactList.vue'
@@ -867,8 +867,10 @@ const fieldsMissing = computed(() => (branch.value?.fields ?? []).some(f => f.re
  tunnelOptions.value.length > 0 && !tunnel.value || noMailboxes.value || offerModes.value && (readingModes.value || !modes.value))
 /** The worker discarded the plan: answers or facts changed after it was prepared. */
 const planChanged = computed(() => (error.value as AssistantError | undefined)?.details?.reason === 'mail.setup.planChanged')
-/** No healthy tunnel: the error says so; the steps to get one follow it. */
+/** The receive preview requires a healthy tunnel in the selected account. */
 const tunnelHelp = computed(() => (error.value as AssistantError | undefined)?.details?.reason === 'mail.setup.tunnelRequired')
+const tunnelHelpFold = computed<AccordionEntry[]>(() => [{value: 'manual-tunnel', title: k.t('mail.setup.tunnelAdvanced')}])
+function openConnectCatalog() {window.open(SYNO_CONNECT_CATALOG_URL, '_blank', 'noopener,noreferrer')}
 /** Generate the preview again: from the preview step, back to the configuration
  * (the fields may differ);
  * on the configuration step, prepare it now and show it. */
@@ -1382,7 +1384,20 @@ const resultTone = computed<WizardResultTone>(() => {
   <WizardStep step-key="configuration" :headline="configurationTitle" :description="branch?.bodyKey ? k.t(branch.bodyKey) : undefined"
    :previous-step-key="() => !viaCloudflare && branch?.needsAccount ? 'account' : 'facts'" next-step-key="preview"
    :next-disabled="fieldsMissing" :pre-enter-next-step="leaveConfiguration">
-   <Callout v-if="errorText" tone="danger" :dismissible="false"><span role="alert">{{ errorText }}</span>
+   <Callout v-if="tunnelHelp" tone="warning" :dismissible="false" data-tunnel-help>
+    <Space direction="column" spacing="dense">
+     <span role="alert">{{ k.t('mail.setup.tunnelRequiredBody') }}</span>
+     <ol class="msa-tunnel-steps" data-tunnel-steps>
+      <li>{{ k.t('mail.setup.tunnelStepInstall') }}</li>
+      <li>{{ k.t('mail.setup.tunnelStepConnect') }}</li>
+      <li>{{ k.t('mail.setup.tunnelStepPreview') }}</li>
+     </ol>
+     <span>{{ k.t('mail.setup.tunnelPublicDSM') }}</span>
+     <span>{{ k.t('mail.setup.tunnelSendOnly', {send: k.t('mail.setup.intent.send')}) }}</span>
+    </Space>
+    <template #actions><Button variant="primary" data-open-connect-catalog @click="openConnectCatalog">{{ k.t('mail.setup.tunnelOpenConnect') }}</Button></template>
+   </Callout>
+   <Callout v-else-if="errorText" tone="danger" :dismissible="false"><span role="alert">{{ errorText }}</span>
     <template v-if="planChanged" #actions><Button variant="secondary" data-regenerate :disabled="fieldsMissing || previewing" @click="regenerate">{{ k.t('ui.setup.regeneratePreview') }}</Button></template>
     <template v-else-if="refusal" #actions><Button variant="secondary" @click="k.askAccess(refusal.code === 'authority_required' && refusal.profile ? [refusal.profile] : undefined)">{{ k.t('ui.access.needed') }}</Button></template>
    </Callout>
@@ -1392,7 +1407,9 @@ const resultTone = computed<WizardResultTone>(() => {
      <Button variant="secondary" data-replace-token @click="replaceToken">{{ k.t('mail.setup.cloudflare.replace') }}</Button>
     </template>
    </Callout>
-   <Callout v-if="tunnelHelp" tone="info" variant="inline" :dismissible="false" data-tunnel-help>{{ k.t('mail.setup.tunnelRequiredBody') }}</Callout>
+   <Accordion v-if="tunnelHelp" :items="tunnelHelpFold" data-tunnel-advanced>
+    <template #item-manual-tunnel>{{ k.t('mail.setup.tunnelAdvancedBody') }}</template>
+   </Accordion>
    <!-- Only what the administrator must know: at most three plain lines; the rest is folded. -->
    <div v-if="consequences.length" class="msa-lines" role="list" data-consequences>
     <div v-for="line in consequences" :key="line" role="listitem">{{ line }}</div>
@@ -1523,3 +1540,14 @@ const resultTone = computed<WizardResultTone>(() => {
   </WizardStep>
  </WizardDialog>
 </template>
+
+<style scoped>
+.msa-tunnel-steps {
+ margin: 0;
+ padding-inline-start: var(--ui-space-5);
+ list-style: decimal;
+}
+.msa-tunnel-steps > li + li {
+ margin-block-start: var(--ui-space-2);
+}
+</style>
