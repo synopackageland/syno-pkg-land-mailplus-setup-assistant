@@ -1101,7 +1101,7 @@
   "ui.cfFlow.dirOut": "寄件",
   "ui.cfFlow.zoneInternet": "網際網路",
   "ui.cfFlow.zoneCloudflare": "Cloudflare 中樞",
-  "ui.cfFlow.zoneNas": "你的 NAS",
+  "ui.cfFlow.zoneNas": "您的 NAS",
   "ui.cfFlow.branchIn": "收件管道",
   "ui.cfFlow.branchOut": "寄件閘道",
   "ui.cfFlow.node.internet": "外部郵件",
