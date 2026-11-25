@@ -4,7 +4,7 @@
   "payload": {
     "package": {
       "id": "SynoMailPlusSetupAssistant",
-      "version": "0.1.0-0055",
+      "version": "0.1.0-0056",
       "displayName": "MailPlus Setup Assistant"
     },
     "aliases": [
@@ -1282,5 +1282,5 @@
       }
     }
   },
-  "sha256": "776e4af89293696f37adc4585cc3b82546977b369e1c204cfb41d7e54c9c45ba"
+  "sha256": "21c7ed812d700ae437d2145d0eb4feda0768fa8cf871419e78ccc8267caf70d1"
 }
