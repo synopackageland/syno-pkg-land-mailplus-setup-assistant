@@ -1128,7 +1128,7 @@
   "ui.cfFlow.step.in.internet": "외부 수신",
   "ui.cfFlow.step.in.routing": "주소 일치",
   "ui.cfFlow.step.in.worker": "≤25 MiB",
-  "ui.cfFlow.step.in.vpc": "VPC 내부",
+  "ui.cfFlow.step.in.vpc": "내부망",
   "ui.cfFlow.step.in.tunnel": ":25 통과",
   "ui.cfFlow.step.in.mailplus": "메일함 저장",
   "ui.cfFlow.step.out.mailplus": "STARTTLS",

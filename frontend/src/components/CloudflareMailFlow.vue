@@ -36,6 +36,7 @@ interface SegmentSpec {
 }
 
 interface Point {x: number; y: number}
+interface Rect {x1: number; y1: number; x2: number; y2: number}
 
 interface BuiltSegment {
  el: SVGPathElement
@@ -44,8 +45,10 @@ interface BuiltSegment {
  to: string
  p1: Point
  p2: Point
+ clearStart: number
+ clearEnd: number
+ isVertical: boolean
 }
-
 interface PigeonActor {
  g: SVGGElement
  birdPos: SVGGElement
@@ -63,12 +66,12 @@ interface PigeonActor {
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
+const MAILPLUS_DSM_ICON_URL = '/webman/3rdparty/MailPlus-Server/images/MailPlusServer_64.png'
 const COMPACT_STAGE_WIDTH = 580
 const START_DWELL = 480
 const FLY_MS = 1050
 const STOP_DWELL = 760
 const END_DWELL = 1150
-
 const FLOWS: Record<FlowDir, StationSpec[]> = {
  in: [
   {id: 'internet', badge: 'raw', chipKey: 'ui.cfFlow.chip.internet', tagKey: 'ui.cfFlow.step.in.internet'},
@@ -98,6 +101,8 @@ const reducedMotion = ref(false)
 const activeDir = ref<FlowDir>('in')
 const activeNodeId = ref<string | null>(null)
 const activeStepIdx = ref(0)
+const mailplusIconLoaded = ref(false)
+const mailplusIconFailed = ref(false)
 
 const stageRef = ref<HTMLElement | null>(null)
 const svgUnderRef = ref<SVGSVGElement | null>(null)
@@ -114,6 +119,9 @@ let dashOffset = 0
 let wingPhase = 0
 let routes: Record<FlowDir, BuiltSegment[]> = {in: [], out: []}
 let dots: Record<FlowDir, SVGCircleElement[]> = {in: [], out: []}
+let nodeRects: Rect[] = []
+let nodeTextRects: Rect[] = []
+let labelRects: Rect[] = []
 let resizeObserver: ResizeObserver | null = null
 let rmQuery: MediaQueryList | null = null
 
@@ -124,6 +132,16 @@ let popGroup: SVGGElement | null = null
 let popRect: SVGRectElement | null = null
 let popText: SVGTextElement | null = null
 
+function onMailplusIconLoad(e: Event) {
+ const img = e.target as HTMLImageElement | null
+ if(img && img.naturalWidth > 0) mailplusIconLoaded.value = true
+ else mailplusIconFailed.value = true
+}
+
+function onMailplusIconError() {
+ mailplusIconLoaded.value = false
+ mailplusIconFailed.value = true
+}
 function svgEl<K extends keyof SVGElementTagNameMap>(
  tag: K,
  attrs: Record<string, string | number> = {},
@@ -331,8 +349,8 @@ function initOverlay() {
  svgOver.appendChild(rmOutActor.g)
 
  popGroup = svgEl('g', {class: 'msa-cf-pop-tag', opacity: '0'}, svgOver)
- popRect = svgEl('rect', {rx: '9', height: '19', y: '0'}, popGroup)
- popText = svgEl('text', {'font-size': '10.5', 'text-anchor': 'middle', fill: '#ffffff', y: '13.5'}, popGroup)
+ popRect = svgEl('rect', {rx: '10.5', height: '21', y: '0'}, popGroup)
+ popText = svgEl('text', {'font-size': '11', 'text-anchor': 'middle', fill: '#ffffff', y: '14.5'}, popGroup)
 }
 
 function clearOverlayRefs() {
@@ -344,22 +362,79 @@ function clearOverlayRefs() {
  popText = null
 }
 
-function showPopTag(x: number, y: number, label: string, dir: FlowDir, opacity: number) {
+function overlapArea(a: Rect, b: Rect): number {
+ const ox = Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1))
+ const oy = Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1))
+ return ox * oy
+}
+
+function rectOverlapTotal(r: Rect, list: Rect[]): number {
+ let sum = 0
+ for(const o of list) sum += overlapArea(r, o)
+ return sum
+}
+
+function showPopTag(x: number, y: number, label: string, dir: FlowDir, opacity: number, isVertical = false) {
  if(!popGroup || !popRect || !popText) return
  if(!label || opacity <= 0.02) {
   popGroup.setAttribute('opacity', '0')
   return
  }
  popText.textContent = label
- const wideChars = [...label].reduce((sum, ch) => sum + (ch.charCodeAt(0) > 255 ? 11 : 6.6), 0)
- const approxW = Math.max(46, Math.ceil(wideChars) + 16)
+ const wideChars = [...label].reduce((sum, ch) => sum + (ch.charCodeAt(0) > 255 ? 11.5 : 6.9), 0)
+ const pillW = Math.max(50, Math.ceil(wideChars) + 18)
+ const pillH = 21
  const stageW = stageRef.value?.clientWidth || 720
- const cx = Math.max(approxW / 2 + 6, Math.min(stageW - approxW / 2 - 6, x))
- const cy = Math.max(4, y - 48)
- popRect.setAttribute('x', String(-approxW / 2))
- popRect.setAttribute('width', String(approxW))
+ const stageH = stageRef.value?.clientHeight || 520
+ const isCompact = stageW < COMPACT_STAGE_WIDTH
+ const pScale = pigeonScale(isCompact)
+ const pHalfW = Math.ceil(33 * pScale)
+ const pHalfH = Math.ceil(22 * pScale)
+ const pigeonBox: Rect = {x1: x - pHalfW, y1: y - pHalfH, x2: x + pHalfW, y2: y + pHalfH}
+ // Evaluate candidate positions around the pigeon along the open corridor so
+ // the status pill never covers card text, zone titles, or the pigeon itself.
+ const candidates: Array<{cx: number; cy: number; bias: number}> = [
+  {cx: x + pHalfW + pillW / 2 + 8, cy: y - pillH / 2, bias: isVertical ? 0 : 8},
+  {cx: x - pHalfW - pillW / 2 - 8, cy: y - pillH / 2, bias: isVertical ? 2 : 10},
+  {cx: x, cy: y - pHalfH - pillH - 6, bias: isVertical ? 14 : 0},
+  {cx: x, cy: y + pHalfH + 6, bias: isVertical ? 16 : 4},
+  {cx: x + pHalfW + pillW / 2 + 6, cy: y - pHalfH - pillH / 2, bias: 18},
+  {cx: x - pHalfW - pillW / 2 - 6, cy: y - pHalfH - pillH / 2, bias: 20},
+  {cx: x + pHalfW + pillW / 2 + 6, cy: y + pHalfH - pillH / 2, bias: 22},
+  {cx: x - pHalfW - pillW / 2 - 6, cy: y + pHalfH - pillH / 2, bias: 24},
+  {cx: x, cy: y - pHalfH - pillH - 20, bias: 34},
+  {cx: x, cy: y + pHalfH + 20, bias: 36},
+ ]
+
+ let bestCx = x
+ let bestCy = Math.max(4, y - pHalfH - pillH - 6)
+ let bestCost = Number.POSITIVE_INFINITY
+
+ for(const c of candidates) {
+  const clampedCx = Math.max(pillW / 2 + 6, Math.min(stageW - pillW / 2 - 6, c.cx))
+  const clampedCy = Math.max(4, Math.min(stageH - pillH - 4, c.cy))
+  const pillRect: Rect = {
+   x1: clampedCx - pillW / 2 - 2,
+   y1: clampedCy - 2,
+   x2: clampedCx + pillW / 2 + 2,
+   y2: clampedCy + pillH + 2,
+  }
+  const nodeHit = rectOverlapTotal(pillRect, nodeRects)
+  const labelHit = rectOverlapTotal(pillRect, labelRects)
+  const birdHit = overlapArea(pillRect, pigeonBox)
+  const clampShift = Math.hypot(clampedCx - c.cx, clampedCy - c.cy)
+  const cost = nodeHit * 120 + labelHit * 45 + birdHit * 35 + clampShift * 2 + c.bias
+  if(cost < bestCost) {
+   bestCost = cost
+   bestCx = clampedCx
+   bestCy = clampedCy
+  }
+ }
+
+ popRect.setAttribute('x', String(-pillW / 2))
+ popRect.setAttribute('width', String(pillW))
  popRect.setAttribute('fill', dir === 'in' ? 'var(--ui-blue-10)' : 'var(--ui-orange-10)')
- popGroup.setAttribute('transform', `translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`)
+ popGroup.setAttribute('transform', `translate(${bestCx.toFixed(1)}, ${bestCy.toFixed(1)})`)
  popGroup.setAttribute('opacity', opacity.toFixed(3))
 }
 
@@ -375,7 +450,7 @@ function posePigeon(
 ) {
  const stageW = stageRef.value?.clientWidth || 720
  const isCompact = stageW < COMPACT_STAGE_WIDTH
- const baseScale = (opts.scale ?? 1.0) * (isCompact ? 0.84 : 1.0)
+ const baseScale = (opts.scale ?? 1.0) * pigeonScale(isCompact)
  const flying = Boolean(opts.flying)
  const isIn = dir === 'in'
  const accent = isIn ? 'var(--ui-blue-9)' : 'var(--ui-orange-9)'
@@ -383,19 +458,25 @@ function posePigeon(
  const ghostFill = isIn ? 'var(--ui-blue-3)' : 'var(--ui-orange-3)'
  const ghostStroke = isIn ? 'var(--ui-blue-7)' : 'var(--ui-orange-7)'
 
- const vx = Math.cos(angleRad)
+ const rawVx = Math.cos(angleRad)
+ const rawVy = Math.sin(angleRad)
  const facingLeft = opts.preferLeft !== undefined
-  ? (Math.abs(vx) < 0.08 ? opts.preferLeft : vx < 0)
-  : vx < -0.05
+  ? (Math.abs(rawVx) < 0.16 ? opts.preferLeft : rawVx < 0)
+  : rawVx < -0.05
 
- const bob = flying ? Math.sin(phase - 0.6) * 2.1 : Math.sin(phase * 0.45) * 0.8
+ // Keep the pigeon upright with a graceful glide pitch (max ±24 deg) even on
+ // vertical drops so wings and the carried envelope stay unmistakable.
+ const clampedPitch = Math.max(-0.42, Math.min(0.42, Math.atan2(rawVy, Math.max(Math.abs(rawVx), 0.72))))
+ const visualAngle = facingLeft ? Math.PI - clampedPitch : clampedPitch
+ const vx = Math.cos(visualAngle)
+
+ const bob = flying ? Math.sin(phase - 0.6) * 2.0 : Math.sin(phase * 0.45) * 0.7
  const px = x
  const py = y + bob
 
  actor.birdPos.setAttribute('transform', `translate(${px.toFixed(1)}, ${py.toFixed(1)}) scale(${baseScale.toFixed(3)})`)
- const angleDeg = (angleRad * 180) / Math.PI
+ const angleDeg = (visualAngle * 180) / Math.PI
  actor.orient.setAttribute('transform', facingLeft ? `rotate(${angleDeg.toFixed(1)}) scale(1,-1)` : `rotate(${angleDeg.toFixed(1)})`)
-
  if(flying) {
   const fScaleY = 0.16 + 0.86 * Math.cos(phase)
   const fRot = -6 + 14 * Math.sin(phase)
@@ -421,19 +502,19 @@ function posePigeon(
 
  const lx = 16.4
  const ly = facingLeft ? 4.0 : -4.0
- const cosA = Math.cos(angleRad)
- const sinA = Math.sin(angleRad)
+ const cosA = Math.cos(visualAngle)
+ const sinA = Math.sin(visualAngle)
  const beakX = px + baseScale * (lx * cosA - ly * sinA)
  const beakY = py + baseScale * (lx * sinA + ly * cosA)
  const swayDeg = flying
-  ? (-vx * 7.5 + Math.sin(phase) * 2.8)
-  : (opts.staticPose ? 0 : Math.sin(phase * 0.5) * 1.8)
- const envScale = baseScale * 0.92
+  ? (-vx * 6.5 + Math.sin(phase) * 2.6)
+  : (opts.staticPose ? 0 : Math.sin(phase * 0.5) * 1.6)
+ const envScale = baseScale * 0.88
  actor.envWrap?.setAttribute('transform', `translate(${beakX.toFixed(1)}, ${beakY.toFixed(1)}) rotate(${swayDeg.toFixed(1)}) scale(${envScale.toFixed(3)})`)
 
- const steepUp = sinA < -0.55
- const shiftX = facingLeft ? (steepUp ? -7.4 : -5.6) : (steepUp ? 7.4 : 5.6)
- const shiftY = steepUp ? -1.5 : 0
+ const steepUp = sinA < -0.35
+ const shiftX = facingLeft ? (steepUp ? -6.8 : -5.2) : (steepUp ? 6.8 : 5.2)
+ const shiftY = steepUp ? -1.2 : 0
  actor.envShift?.setAttribute('transform', `translate(${shiftX.toFixed(1)}, ${shiftY.toFixed(1)})`)
  actor.envRect?.setAttribute('stroke', accent)
  actor.envShade?.setAttribute('fill', tint)
@@ -495,7 +576,7 @@ function bezierD(p1: Point, p2: Point, s1: Side, s2: Side, bow = 0): string {
 
 function gutterD(p1: Point, p2: Point, side: 'left' | 'right'): string {
  const w = stageRef.value?.clientWidth || 340
- const gx = side === 'left' ? 16 : w - 16
+ const gx = side === 'left' ? 17 : w - 17
  const r = 12
  const dirY = p2.y >= p1.y ? 1 : -1
  const dirX1 = gx >= p1.x ? 1 : -1
@@ -563,6 +644,61 @@ function pointAt(seg: BuiltSegment, dist: number): Point {
  return {x: seg.p1.x + (seg.p2.x - seg.p1.x) * t, y: seg.p1.y + (seg.p2.y - seg.p1.y) * t}
 }
 
+function pigeonScale(isCompact: boolean): number {
+ return isCompact ? 1.16 : 1.34
+}
+
+function pigeonBoundsAt(pt: Point, facingLeft: boolean, isCompact: boolean): Rect {
+ const s = pigeonScale(isCompact)
+ const backX = 24 * s
+ const frontX = 35 * s
+ const topY = 23 * s
+ const botY = 19 * s
+ return facingLeft
+  ? {x1: pt.x - frontX, y1: pt.y - topY, x2: pt.x + backX, y2: pt.y + botY}
+  : {x1: pt.x - backX, y1: pt.y - topY, x2: pt.x + frontX, y2: pt.y + botY}
+}
+
+function computeClearSpan(seg: BuiltSegment, isCompact: boolean): {clearStart: number; clearEnd: number} {
+ if(!nodeRects.length || seg.len <= 1) return {clearStart: 0.2, clearEnd: 0.8}
+ const stageW = stageRef.value?.clientWidth || 720
+ const preferLeft = seg.p2.x < seg.p1.x
+ const eps = Math.min(4, Math.max(0.5, seg.len * 0.02))
+ const steps = 40
+ let firstClear = -1
+ let lastClear = -1
+ let bestU = 0.5
+ let bestScore = Number.POSITIVE_INFINITY
+
+ for(let i = 1; i < steps; i++) {
+  const u = i / steps
+  const dist = u * seg.len
+  const pt = pointAt(seg, dist)
+  const pA = pointAt(seg, Math.max(0, dist - eps))
+  const pB = pointAt(seg, Math.min(seg.len, dist + eps))
+  const angle = Math.atan2(pB.y - pA.y, pB.x - pA.x)
+  const rawVx = Math.cos(angle)
+  const facingLeft = Math.abs(rawVx) < 0.16 ? preferLeft : rawVx < 0
+  const box = pigeonBoundsAt(pt, facingLeft, isCompact)
+  const ovNodes = rectOverlapTotal(box, nodeRects)
+  const ovText = rectOverlapTotal(box, nodeTextRects)
+  const ovLabels = rectOverlapTotal(box, labelRects)
+  const outX = Math.max(0, 2 - box.x1) + Math.max(0, box.x2 - (stageW - 2))
+  if(ovNodes === 0 && ovLabels === 0 && outX === 0) {
+   if(firstClear < 0) firstClear = u
+   lastClear = u
+  }
+  const centerBias = Math.abs(u - 0.5) * 6
+  const score = ovText * 120 + ovNodes + ovLabels * 8 + outX * 25 + centerBias
+  if(score < bestScore) {
+   bestScore = score
+   bestU = u
+  }
+ }
+ if(firstClear >= 0) return {clearStart: firstClear, clearEnd: lastClear}
+ return {clearStart: bestU, clearEnd: bestU}
+}
+
 function sampleSegment(seg: BuiltSegment, t: number) {
  const clamped = Math.max(0, Math.min(1, t))
  const len = seg.len
@@ -573,13 +709,13 @@ function sampleSegment(seg: BuiltSegment, t: number) {
  const pB = pointAt(seg, Math.min(len, dist + eps))
  const angle = Math.atan2(pB.y - pA.y, pB.x - pA.x)
 
- const gDist = Math.max(0, dist - 22)
+ const gDist = Math.max(seg.clearStart * len, dist - 22)
  const gp = pointAt(seg, gDist)
  const gpA = pointAt(seg, Math.max(0, gDist - eps))
  const gpB = pointAt(seg, Math.min(len, gDist + eps))
  const gAngle = Math.atan2(gpB.y - gpA.y, gpB.x - gpA.x)
 
- return {p, angle, gp, gAngle, showGhost: dist > 14, preferLeft: seg.p2.x < seg.p1.x}
+ return {p, angle, gp, gAngle, showGhost: dist - seg.clearStart * len > 18, preferLeft: seg.p2.x < seg.p1.x}
 }
 
 function stylePaths(curDir: FlowDir, activeSegIdx = -1) {
@@ -630,10 +766,11 @@ function renderReducedStatic() {
    if(altIdx >= 0) bestIdx = altIdx
   }
   const seg = inSegs[bestIdx]!
-  const s = sampleSegment(seg, 0.5)
+  const midU = (seg.clearStart + seg.clearEnd) * 0.5
+  const s = sampleSegment(seg, midU)
   mainActor.g.style.display = ''
   posePigeon(mainActor, s.p.x, s.p.y, s.angle, 0.25, 'in', FLOWS.in[bestIdx]!.badge, {
-   scale: 0.94, flying: false, staticPose: true, preferLeft: s.preferLeft,
+   scale: 0.92, flying: false, staticPose: true, preferLeft: s.preferLeft,
   })
  } else {
   mainActor.g.style.display = 'none'
@@ -646,10 +783,11 @@ function renderReducedStatic() {
    for(let i = 0; i < outSegs.length; i++) if(outSegs[i]!.len > outSegs[bestIdx]!.len) bestIdx = i
   }
   const seg = outSegs[bestIdx]!
-  const s = sampleSegment(seg, 0.5)
+  const midU = (seg.clearStart + seg.clearEnd) * 0.5
+  const s = sampleSegment(seg, midU)
   rmOutActor.g.style.display = ''
   posePigeon(rmOutActor, s.p.x, s.p.y, s.angle, 0.25, 'out', FLOWS.out[bestIdx]!.badge, {
-   scale: 0.94, flying: false, staticPose: true, preferLeft: s.preferLeft,
+   scale: 0.92, flying: false, staticPose: true, preferLeft: s.preferLeft,
   })
  } else {
   rmOutActor.g.style.display = 'none'
@@ -685,14 +823,15 @@ function renderFrame(dt: number) {
 
  let t = elapsed
  if(t < START_DWELL) {
-  const s0 = sampleSegment(segs[0]!, 0)
+  const seg0 = segs[0]!
+  const s0 = sampleSegment(seg0, seg0.clearStart)
   const st = stations[0]!
   stylePaths(dir, 0)
   activeNodeId.value = st.id
   activeStepIdx.value = 0
   ghostActor.g.style.display = 'none'
   posePigeon(mainActor, s0.p.x, s0.p.y, s0.angle, wingPhase, dir, st.badge, {scale: 0.98, flying: false, preferLeft: s0.preferLeft})
-  showPopTag(s0.p.x, s0.p.y, k.t(st.tagKey), dir, Math.min(1, t / 140))
+  showPopTag(s0.p.x, s0.p.y, k.t(st.tagKey), dir, Math.min(1, t / 140), seg0.isVertical)
   return
  }
  t -= START_DWELL
@@ -704,7 +843,8 @@ function renderFrame(dt: number) {
 
   if(t < FLY_MS) {
    const u = easeInOutSine(t / FLY_MS)
-   const sample = sampleSegment(seg, u)
+   const segU = seg.clearStart + (seg.clearEnd - seg.clearStart) * u
+   const sample = sampleSegment(seg, segU)
    const prev = stations[i]!
    stylePaths(dir, i)
    activeNodeId.value = u < 0.25 ? prev.id : null
@@ -712,28 +852,28 @@ function renderFrame(dt: number) {
    posePigeon(mainActor, sample.p.x, sample.p.y, sample.angle, wingPhase, dir, prev.badge, {scale: 1.0, flying: true, preferLeft: sample.preferLeft})
    if(sample.showGhost) {
     ghostActor.g.style.display = ''
-    posePigeon(ghostActor, sample.gp.x, sample.gp.y, sample.gAngle, wingPhase - 0.9, dir, 'raw', {scale: 0.88, flying: true, preferLeft: sample.preferLeft})
+    posePigeon(ghostActor, sample.gp.x, sample.gp.y, sample.gAngle, wingPhase - 0.9, dir, 'raw', {scale: 0.86, flying: true, preferLeft: sample.preferLeft})
    } else {
     ghostActor.g.style.display = 'none'
    }
    const tagAlpha = u < 0.08 ? 1 - u / 0.08 : 0
-   showPopTag(seg.p1.x, seg.p1.y, k.t(prev.tagKey), dir, tagAlpha)
+   showPopTag(sample.p.x, sample.p.y, k.t(prev.tagKey), dir, tagAlpha, seg.isVertical)
    return
   }
   t -= FLY_MS
 
   if(t < dwell) {
-   const sEnd = sampleSegment(seg, 1)
+   const sEnd = sampleSegment(seg, seg.clearEnd)
    const st = stations[i + 1]!
    stylePaths(dir, i)
    activeNodeId.value = st.id
    activeStepIdx.value = i + 1
    ghostActor.g.style.display = 'none'
-   const popScale = t < 240 ? 1 + 0.08 * Math.sin((t / 240) * Math.PI) : 1.0
+   const popScale = t < 240 ? 1 + 0.07 * Math.sin((t / 240) * Math.PI) : 1.0
    posePigeon(mainActor, sEnd.p.x, sEnd.p.y, sEnd.angle, wingPhase, dir, st.badge, {scale: popScale, flying: false, preferLeft: sEnd.preferLeft})
    const fadeIn = Math.min(1, t / 140)
    const fadeOut = isLast && t > dwell - 220 ? Math.max(0, (dwell - t) / 220) : 1
-   showPopTag(sEnd.p.x, sEnd.p.y, k.t(st.tagKey), dir, Math.min(fadeIn, fadeOut))
+   showPopTag(sEnd.p.x, sEnd.p.y, k.t(st.tagKey), dir, Math.min(fadeIn, fadeOut), seg.isVertical)
    return
   }
   t -= dwell
@@ -754,7 +894,27 @@ function rebuildRoutes() {
  svgUnder.setAttribute('viewBox', `0 0 ${w} ${h}`)
  svgOver.setAttribute('viewBox', `0 0 ${w} ${h}`)
 
- const specs = getSegments(w < COMPACT_STAGE_WIDTH)
+ const sr = stage.getBoundingClientRect()
+ const measureRects = (selector: string, pad: number): Rect[] => {
+  const out: Rect[] = []
+  stage.querySelectorAll<HTMLElement>(selector).forEach(el => {
+   const r = el.getBoundingClientRect()
+   if(r.width > 0 && r.height > 0) {
+    out.push({
+     x1: r.left - sr.left - pad,
+     y1: r.top - sr.top - pad,
+     x2: r.right - sr.left + pad,
+     y2: r.bottom - sr.top + pad,
+    })
+   }
+  })
+  return out
+ }
+ nodeRects = measureRects('[data-flow-node]', 3)
+ nodeTextRects = measureRects('[data-flow-node] .msa-cf-node-meta', 4)
+ labelRects = measureRects('.msa-cf-zone-title, .msa-cf-branch-label', 3)
+ const isCompact = w < COMPACT_STAGE_WIDTH
+ const specs = getSegments(isCompact)
  routes = {in: [], out: []}
  dots = {in: [], out: []}
 
@@ -769,13 +929,27 @@ function rebuildRoutes() {
     'data-dir': dir,
     'data-seg': idx,
    }, svgUnder)
-   routes[dir].push({el: pathEl, len: pathLength(pathEl, p1, p2), from: seg.from, to: seg.to, p1, p2})
+   const isVertical = (seg.fromSide === 'bottom' || seg.fromSide === 'top') && !seg.gutter
+   const built: BuiltSegment = {
+    el: pathEl,
+    len: pathLength(pathEl, p1, p2),
+    from: seg.from,
+    to: seg.to,
+    p1,
+    p2,
+    clearStart: 0.2,
+    clearEnd: 0.8,
+    isVertical,
+   }
+   const span = computeClearSpan(built, isCompact)
+   built.clearStart = span.clearStart
+   built.clearEnd = span.clearEnd
+   routes[dir].push(built)
    const d1 = svgEl('circle', {cx: p1.x.toFixed(1), cy: p1.y.toFixed(1), r: '3.2', class: `msa-cf-dot ${dir}`}, svgUnder)
    const d2 = svgEl('circle', {cx: p2.x.toFixed(1), cy: p2.y.toFixed(1), r: '3.2', class: `msa-cf-dot ${dir}`}, svgUnder)
    dots[dir].push(d1, d2)
   })
  }
-
  if(reducedMotion.value) renderReducedStatic()
  else renderFrame(0)
 }
@@ -1153,9 +1327,20 @@ onUnmounted(() => {
 
       <div class="msa-cf-nas-top">
        <div class="msa-cf-node" :class="nodeClass('mailplus')" data-flow-node="mailplus">
-        <div class="msa-cf-mp-tile" aria-hidden="true">
+        <div class="msa-cf-mp-tile" :class="{'has-dsm-icon': mailplusIconLoaded}" aria-hidden="true">
          <span class="msa-cf-mp-halo" />
-         <MailCheck class="msa-cf-mp-ico" />
+         <img
+          v-if="!mailplusIconFailed"
+          class="msa-cf-mp-img"
+          :class="{'is-loaded': mailplusIconLoaded}"
+          :src="MAILPLUS_DSM_ICON_URL"
+          alt=""
+          decoding="async"
+          data-mailplus-icon
+          @load="onMailplusIconLoad"
+          @error="onMailplusIconError"
+         >
+         <MailCheck v-if="!mailplusIconLoaded" class="msa-cf-mp-ico" data-mailplus-fallback />
         </div>
         <div class="msa-cf-node-meta">
          <div class="msa-cf-node-name-row">
@@ -1405,8 +1590,8 @@ onUnmounted(() => {
 
 .msa-cf-grid {
  display: grid;
- grid-template-columns: minmax(98px, 114px) minmax(0, 1.48fr) minmax(0, 1.02fr);
- gap: 22px;
+ grid-template-columns: minmax(94px, 108px) minmax(0, 1.48fr) minmax(0, 1.02fr);
+ gap: 54px;
  align-items: center;
  position: relative;
 }
@@ -1483,13 +1668,16 @@ onUnmounted(() => {
  padding: 9px;
  display: flex;
  flex-direction: column;
- gap: 18px;
+ gap: 10px;
 }
 
 .msa-cf-branch-in {
  border-color: var(--ui-blue-4);
 }
 
+.msa-cf-branch-in .msa-cf-node + .msa-cf-node {
+ margin-top: 64px;
+}
 .msa-cf-branch-label {
  display: inline-flex;
  align-items: center;
@@ -1541,11 +1729,11 @@ onUnmounted(() => {
 
 .msa-cf-tunnel-gate {
  position: absolute;
- left: -22px;
- top: 52%;
+ left: -10px;
+ top: 53%;
  transform: translateY(-50%);
  z-index: 8;
- width: 146px;
+ width: 142px;
  padding: 7px 9px;
  border-color: var(--ui-info);
  background: var(--ui-surface);
@@ -1580,13 +1768,33 @@ onUnmounted(() => {
  place-items: center;
 }
 
+.msa-cf-mp-tile.has-dsm-icon {
+ background: transparent;
+ border-color: transparent;
+}
+
+.msa-cf-mp-img {
+ position: absolute;
+ inset: 0;
+ width: 100%;
+ height: 100%;
+ object-fit: contain;
+ border-radius: var(--ui-radius-sm);
+ z-index: 2;
+ opacity: 0;
+ transition: opacity 160ms ease;
+}
+
+.msa-cf-mp-img.is-loaded {
+ opacity: 1;
+}
+
 .msa-cf-mp-ico {
  width: 20px;
  height: 20px;
  position: relative;
  z-index: 2;
 }
-
 .msa-cf-mp-halo {
  position: absolute;
  inset: -4px;
@@ -1937,11 +2145,11 @@ onUnmounted(() => {
 /* Compact / mobile container layout (390px viewport and narrow windows) */
 @container (max-width: 579px) {
  .msa-cf-stage {
-  padding: var(--ui-space-3) 30px var(--ui-space-2);
+  padding: var(--ui-space-3) 38px var(--ui-space-2);
  }
  .msa-cf-grid {
   grid-template-columns: 1fr;
-  gap: 24px;
+  gap: 50px;
  }
  .msa-cf-node-stack {
   flex-direction: row;
@@ -1961,16 +2169,26 @@ onUnmounted(() => {
  .msa-cf-branch {
   padding: 9px 8px 10px;
  }
+ .msa-cf-branch-in .msa-cf-node + .msa-cf-node {
+  margin-top: 58px;
+ }
  .msa-cf-zone-nas {
-  padding: 46px 10px 12px;
-  gap: 18px;
+  margin-top: 22px;
+  padding: 64px 10px 14px;
+  gap: 12px;
  }
  .msa-cf-zone-nas > .msa-cf-zone-title {
   position: static;
  }
+ .msa-cf-nas-top {
+  margin-top: 28px;
+ }
+ .msa-cf-nas-bottom {
+  margin-top: 58px;
+ }
  .msa-cf-tunnel-gate {
   left: 50%;
-  top: -22px;
+  top: -28px;
   transform: translateX(-50%);
   width: auto;
   min-width: 186px;

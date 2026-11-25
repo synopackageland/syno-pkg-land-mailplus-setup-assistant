@@ -227,3 +227,65 @@ test.each(LOCALES)('renders translated flow copy with no raw keys in %s', async 
   h.close()
  }
 })
+
+test('no stepper chip repeats its station name inside its description in any locale', () => {
+ const pairs: Array<[string, string]> = [
+  ['ui.cfFlow.chip.internet', 'ui.cfFlow.step.in.internet'],
+  ['ui.cfFlow.chip.routing', 'ui.cfFlow.step.in.routing'],
+  ['ui.cfFlow.chip.worker', 'ui.cfFlow.step.in.worker'],
+  ['ui.cfFlow.chip.vpc', 'ui.cfFlow.step.in.vpc'],
+  ['ui.cfFlow.chip.tunnel', 'ui.cfFlow.step.in.tunnel'],
+  ['ui.cfFlow.chip.mailplus', 'ui.cfFlow.step.in.mailplus'],
+  ['ui.cfFlow.chip.mailplus', 'ui.cfFlow.step.out.mailplus'],
+  ['ui.cfFlow.chip.relay', 'ui.cfFlow.step.out.relay'],
+  ['ui.cfFlow.chip.sending', 'ui.cfFlow.step.out.sending'],
+  ['ui.cfFlow.chip.internet', 'ui.cfFlow.step.out.internet'],
+ ]
+ for(const loc of LOCALES) {
+  const cat = CATALOGS[loc]
+  for(const [chipKey, tagKey] of pairs) {
+   const chip = cat[chipKey]!.trim().toLowerCase()
+   const tag = cat[tagKey]!.trim().toLowerCase()
+   expect(tag.includes(chip), `${loc}: "${chip}" repeated in "${tag}"`).toBe(false)
+  }
+ }
+})
+
+test('loads MailPlus Server icon from DSM package path at runtime and falls back to MailCheck on error', async () => {
+ mockMatchMedia(true)
+ const h1 = openOverview('en')
+ try {
+  await settle()
+  h1.toggleBtn()!.click()
+  await settle()
+
+  const img = h1.section()!.querySelector<HTMLImageElement>('[data-mailplus-icon]')
+  expect(img).not.toBeNull()
+  expect(img!.getAttribute('src')).toBe('/webman/3rdparty/MailPlus-Server/images/MailPlusServer_64.png')
+  expect(h1.section()!.querySelector('[data-mailplus-fallback]')).not.toBeNull()
+
+  Object.defineProperty(img!, 'naturalWidth', {value: 64, configurable: true})
+  img!.dispatchEvent(new Event('load'))
+  await settle()
+  expect(img!.classList.contains('is-loaded')).toBe(true)
+  expect(h1.section()!.querySelector('[data-mailplus-fallback]')).toBeNull()
+ } finally {
+  h1.close()
+ }
+
+ const h2 = openOverview('en')
+ try {
+  await settle()
+  h2.toggleBtn()!.click()
+  await settle()
+
+  const img = h2.section()!.querySelector<HTMLImageElement>('[data-mailplus-icon]')
+  expect(img).not.toBeNull()
+  img!.dispatchEvent(new Event('error'))
+  await settle()
+  expect(h2.section()!.querySelector('[data-mailplus-icon]')).toBeNull()
+  expect(h2.section()!.querySelector('[data-mailplus-fallback]')).not.toBeNull()
+ } finally {
+  h2.close()
+ }
+})

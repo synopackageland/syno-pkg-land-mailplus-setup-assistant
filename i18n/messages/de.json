@@ -1128,7 +1128,7 @@
   "ui.cfFlow.step.in.internet": "Eingehend",
   "ui.cfFlow.step.in.routing": "Adresse @",
   "ui.cfFlow.step.in.worker": "≤25 MiB",
-  "ui.cfFlow.step.in.vpc": "Privates VPC",
+  "ui.cfFlow.step.in.vpc": "Privatnetz",
   "ui.cfFlow.step.in.tunnel": "Port :25",
   "ui.cfFlow.step.in.mailplus": "Im Postfach",
   "ui.cfFlow.step.out.mailplus": "STARTTLS",

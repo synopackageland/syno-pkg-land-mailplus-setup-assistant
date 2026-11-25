@@ -1128,7 +1128,7 @@
   "ui.cfFlow.step.in.internet": "外部来信",
   "ui.cfFlow.step.in.routing": "匹配地址",
   "ui.cfFlow.step.in.worker": "≤25 MiB",
-  "ui.cfFlow.step.in.vpc": "VPC 内网",
+  "ui.cfFlow.step.in.vpc": "内网",
   "ui.cfFlow.step.in.tunnel": "穿越 :25",
   "ui.cfFlow.step.in.mailplus": "收入信箱",
   "ui.cfFlow.step.out.mailplus": "STARTTLS",
