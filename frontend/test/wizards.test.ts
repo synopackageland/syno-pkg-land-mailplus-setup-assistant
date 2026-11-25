@@ -2013,7 +2013,9 @@ test('setup: an unconfirmed inbound delivery offers Check again, which re-verifi
   expect(dialog().textContent).toContain('mail.setup.inbound.checkMailBody')
   // three blocks; Check again is the verification block's header action, apart from the findings and the choice.
   const step=dialog().querySelector('section[data-wizard-step="decision"]')!
-  expect([...step.querySelectorAll('.msa-block')].map(b=>Object.keys((b as HTMLElement).dataset)[0])).toEqual(['applied','verify','decide'])
+  expect([...step.querySelectorAll('.msa-block')]).toEqual(
+   ['applied','verify','decide'].map(name=>step.querySelector(`[data-${name}]`)),
+  )
   expect(step.querySelector('[data-verify] .msa-block-head [data-check-again]')).not.toBeNull()
   expect(step.querySelector('[data-decide] [data-check-again]')).toBeNull()
   expect(step.querySelector('[data-verify] [role=radiogroup]')).toBeNull()
