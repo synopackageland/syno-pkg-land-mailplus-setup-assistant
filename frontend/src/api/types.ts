@@ -211,6 +211,8 @@ export interface RemoveRun {
  total: number
  /** failed: why it stopped (mail.inbound.cause.*, mail.remove.cause.*). */
  causeKey?: string
+ /** failed with mail.remove.cause.authority: the access profile the refused step needs. */
+ profile?: string
  at?: number
  /** done: receiving records Cloudflare would not delete (it locks them for Email Routing); left in place. */
  locked?: LockedRecord[]

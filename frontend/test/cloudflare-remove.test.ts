@@ -18,7 +18,7 @@ const ID = 'd'.repeat(32)
 const ITEMS = ['receiveDomain', 'receiveAddresses', 'sending', 'dns', 'mailplus', 'relay', 'token'].map(i => `ui.remove.item.${i}`)
 const VISIBLE = ['ui.remove.action', 'ui.remove.title', 'ui.remove.body', 'ui.remove.kept', 'ui.remove.routing', 'ui.remove.routingBody',
  'ui.remove.cancel', 'ui.remove.confirm', 'ui.remove.running', 'ui.remove.done', 'ui.remove.failed', 'ui.remove.saveToken', 'ui.remove.uninstall', 'ui.remove.short',
- 'ui.inbound.mode.send', ...ITEMS, ...['record', 'changed', 'nas'].map(c => `mail.remove.cause.${c}`)]
+ 'ui.inbound.mode.send', ...ITEMS, 'ui.remove.access', ...['record', 'changed', 'nas', 'authority', 'admin', 'mailplus', 'relay'].map(c => `mail.remove.cause.${c}`)]
 const JARGON = /catch-?all|Email Routing|Worker(?!s)|VPC|tunnel|relay|journal|snapshot|規則轉寄|全收/i
 
 async function settle() {for(let i = 0; i < 30; i++) {await Promise.resolve(); await nextTick()}}
@@ -68,6 +68,7 @@ test.each(locales)('every removal key exists and is plain in %s', loc => {
  expect(c['ui.remove.running']).toContain('{done}')
  expect(c['ui.remove.running']).toContain('{total}')
  expect(c['ui.remove.failed']).toContain('{cause}')
+ expect(c['ui.remove.access']).toContain('{profile}')
  expect(c['ui.remove.action']!.length).toBeLessThan(45)
  if(loc === 'zh-TW') {
   expect(c['ui.remove.action']).toBe('移除 Cloudflare 設定')
@@ -176,6 +177,46 @@ test('a stopped removal says why, and Try again goes on with the same choice', a
   click(failed.querySelector('[data-remove-retry]')); await settle()
   expect(h.params('mail.cloudflare.remove')).toEqual([{id: ID, routing: true}, {id: ID, routing: true}])
   expect(h.section()!.querySelector('[data-remove-result]')).not.toBeNull()
+ } finally {h.close()}
+})
+
+// A MailPlus Server restore the executor refused for want of MailPlus change
+// access: the line names the access, not the generic "NAS setting", and
+// offers "Allow access" as the setup does; Try again then goes on.
+test('a removal stopped for want of MailPlus change access offers Allow access, then goes on', async () => {
+ let runs = 0
+ const h = open({'mail.inbound.status': {setups: [kept()]},
+  'mail.cloudflare.remove': () => ++runs === 1 ? kept({removal: run('failed', 0, {causeKey: 'mail.remove.cause.authority', profile: 'mail-write'})})
+   : kept({removal: run('done', 5)})})
+ try {
+  await settle()
+  click(h.section()!.querySelector('[data-remove]')); await settle()
+  click(confirmButton()); await settle()
+  const failed = h.section()!.querySelector('[data-remove-failed]')!
+  expect(failed.textContent).toContain('還原 MailPlus Server 需要「MailPlus 變更權」')
+  expect(failed.textContent).not.toContain('MailPlus Server 或郵件轉發服務')
+  const allow = failed.querySelector('[data-remove-access]')
+  expect(allow?.textContent?.trim()).toBe('允許存取')
+  click(allow); await settle()
+  expect(document.body.textContent).toContain(catalogs['zh-TW']!['ui.authority.consentTitle']!)
+  // Allowing access does not start the removal by itself.
+  expect(h.params('mail.cloudflare.remove')).toHaveLength(1)
+  click(failed.querySelector('[data-remove-retry]')); await settle()
+  expect(h.params('mail.cloudflare.remove')).toEqual([{id: ID}, {id: ID}])
+  expect(h.section()!.querySelector('[data-remove-result]')).not.toBeNull()
+ } finally {h.close()}
+})
+
+test('a removal stopped by MailPlus Server or the forwarding service says which, with no Allow access', async () => {
+ const h = open({'mail.inbound.status': {setups: [kept()]},
+  'mail.cloudflare.remove': kept({removal: run('failed', 1, {causeKey: 'mail.remove.cause.relay'})})})
+ try {
+  await settle()
+  click(h.section()!.querySelector('[data-remove]')); await settle()
+  click(confirmButton()); await settle()
+  const failed = h.section()!.querySelector('[data-remove-failed]')!
+  expect(failed.textContent).toContain('這台 NAS 上的郵件轉發服務無法停止')
+  expect(failed.querySelector('[data-remove-access]')).toBeNull()
  } finally {h.close()}
 })
 
