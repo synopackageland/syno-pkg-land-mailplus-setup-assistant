@@ -130,14 +130,21 @@ test('a listed-mailbox row explains Sync mailboxes with an info mark: what it do
  } finally {h.close()}
 })
 
-test('the sync explanation says what syncing does, that once is enough, when to sync again, and that automatic sync does it', () => {
+test('the sync explanation says what syncing does, that the app syncs about every 10 minutes by itself, and that the button applies a change now', () => {
  const en = catalogs.en!['ui.inbound.syncInfo']!
  expect(en).toMatch(/tells Cloudflare which MailPlus mailboxes should receive mail/)
- expect(en).toMatch(/One sync is enough/)
- expect(en).toMatch(/only when mailbox accounts are added or removed/)
- expect(en).toMatch(/automatic sync is on, it does this for you/)
+ expect(en).toMatch(/syncs automatically: about every 10 minutes/)
+ expect(en).toMatch(/press Sync mailboxes/)
+ // Automatic sync has no switch: no text may suggest it can be off.
+ for(const [loc, c] of Object.entries(catalogs)) expect(c['ui.inbound.syncInfo'], loc).toMatch(/10/)
+ expect(en).not.toMatch(/is on|One sync is enough/)
  const tw = catalogs['zh-TW']!['ui.inbound.syncInfo']!
- for(const part of ['哪些 MailPlus 信箱要收信', '同步一次就夠了', '新增或刪除信箱帳號', '自動同步']) expect(tw).toContain(part)
+ for(const part of ['哪些 MailPlus 信箱要收信', '自動同步', '大約每 10 分鐘', '馬上生效', '「同步信箱」']) expect(tw).toContain(part)
+ expect(tw).not.toContain('開啟時')
+ for(const key of ['mail.setup.mailboxesLater', 'mail.setup.receive.addressesBody']) {
+  expect(catalogs.en![key]).toMatch(/within about 10 minutes/)
+  expect(catalogs['zh-TW']![key]).toContain('約 10 分鐘內自動同步')
+ }
 })
 
 test('no kept setup on Cloudflare: no section', async () => {
