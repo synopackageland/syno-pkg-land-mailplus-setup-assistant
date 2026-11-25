@@ -616,11 +616,11 @@ function getSegments(isCompact: boolean): Record<FlowDir, SegmentSpec[]> {
    {from: 'routing', fromSide: 'bottom', to: 'worker', toSide: 'top', bow: 0},
    {from: 'worker', fromSide: 'bottom', to: 'vpc', toSide: 'top', bow: 0},
    {from: 'vpc', fromSide: 'right', to: 'tunnel', toSide: 'left', bow: 0},
-   {from: 'tunnel', fromSide: 'top', to: 'mailplus', toSide: 'bottom', toOffset: -18, bow: -14},
-  ],
-  out: [
-   {from: 'mailplus', fromSide: 'bottom', fromOffset: 22, to: 'relay', toSide: 'top', toOffset: 22, bow: 16},
-   {from: 'relay', fromSide: 'left', to: 'sending', toSide: 'right', bow: 12},
+  {from: 'tunnel', fromSide: 'top', to: 'mailplus', toSide: 'bottom', toOffset: -48, bow: -12},
+ ],
+ out: [
+  {from: 'mailplus', fromSide: 'bottom', fromOffset: 54, to: 'relay', toSide: 'top', toOffset: 54, bow: 14},
+  {from: 'relay', fromSide: 'left', to: 'sending', toSide: 'right', bow: 12},
    {from: 'sending', fromSide: 'left', to: 'internet', toSide: 'right', toOffset: 14, bow: 16},
   ],
  }
@@ -1546,7 +1546,7 @@ onUnmounted(() => {
 
 .msa-cf-stage {
  position: relative;
- padding: var(--ui-space-4) var(--ui-space-2) var(--ui-space-3);
+ padding: var(--ui-space-4) 2px var(--ui-space-3);
  overflow: visible;
 }
 
@@ -1590,8 +1590,8 @@ onUnmounted(() => {
 
 .msa-cf-grid {
  display: grid;
- grid-template-columns: minmax(94px, 108px) minmax(0, 1.48fr) minmax(0, 1.02fr);
- gap: 54px;
+ grid-template-columns: minmax(88px, 90px) minmax(0, 1.01fr) minmax(0, 1fr);
+ gap: 42px;
  align-items: center;
  position: relative;
 }
@@ -1627,7 +1627,7 @@ onUnmounted(() => {
 .msa-cf-zone-internet {
  background: var(--ui-surface-subtle);
  border: 1.5px dashed var(--ui-border-strong);
- padding: 28px 8px 12px;
+ padding: 28px 5px 12px;
 }
 
 .msa-cf-zone-internet .msa-cf-zone-title {
@@ -1637,6 +1637,7 @@ onUnmounted(() => {
 .msa-cf-zone-cf {
  background: var(--ui-orange-1);
  border: 1.5px solid var(--ui-orange-5);
+ padding: 30px 7px 14px;
  display: flex;
  flex-direction: column;
  gap: 16px;
@@ -1649,7 +1650,7 @@ onUnmounted(() => {
 .msa-cf-zone-nas {
  background: var(--ui-blue-1);
  border: 1.5px solid var(--ui-blue-5);
- padding: 34px 10px 14px 28px;
+ padding: 34px 8px 14px 10px;
  display: flex;
  flex-direction: column;
  justify-content: space-between;
@@ -1665,7 +1666,7 @@ onUnmounted(() => {
  background: color-mix(in srgb, var(--ui-surface) 78%, transparent);
  border: 1px solid var(--ui-orange-4);
  border-radius: var(--ui-radius-md);
- padding: 9px;
+ padding: 7px;
  display: flex;
  flex-direction: column;
  gap: 10px;
@@ -1695,7 +1696,7 @@ onUnmounted(() => {
  background: var(--ui-surface);
  border: 1.25px solid var(--ui-border);
  border-radius: var(--ui-radius-md);
- padding: 8px 9px;
+ padding: 8px 8px;
  display: flex;
  align-items: center;
  gap: 8px;
@@ -1707,7 +1708,7 @@ onUnmounted(() => {
 .msa-cf-node-stack {
  flex-direction: column;
  text-align: center;
- padding: 12px 8px;
+ padding: 10px 5px;
  gap: 6px;
 }
 
@@ -1729,11 +1730,11 @@ onUnmounted(() => {
 
 .msa-cf-tunnel-gate {
  position: absolute;
- left: -10px;
+ left: -8px;
  top: 53%;
  transform: translateY(-50%);
  z-index: 8;
- width: 142px;
+ width: 150px;
  padding: 7px 9px;
  border-color: var(--ui-info);
  background: var(--ui-surface);
