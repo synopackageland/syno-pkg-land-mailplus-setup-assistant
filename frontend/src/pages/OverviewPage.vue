@@ -18,6 +18,7 @@ import {useMailPlus} from '../api/mailplus'
 import type {FlowView, ServiceView} from '../api/types'
 import MailPlusNotice from '../components/MailPlusNotice.vue'
 import InboundSection from '../components/InboundSection.vue'
+import CloudflareMailFlow from '../components/CloudflareMailFlow.vue'
 
 const k = useAssistant()
 const mp = useMailPlus(k)
@@ -110,6 +111,8 @@ onMounted(() => void refresh())
   </SettingsSection>
 
   <InboundSection ref="inbound" @removed="readRelay()" />
+
+ <CloudflareMailFlow />
 
   <SettingsSection :title="k.t('mail.diag.wizard.title')" :description="k.t('ui.overview.diagnoseBody')" :collapsible="false" data-section="diagnose">
    <template #actions><Button variant="secondary" data-open="mail.diagnose" @click="k.openWizard('mail.diagnose')">{{ k.t('ui.overview.start') }}</Button></template>
