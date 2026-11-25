@@ -7,9 +7,8 @@ schema: 2
 package: SynoMailPlusSetupAssistant
 version: 0.1.0
 # Increase for every SPK you hand out with the same version (INFO 0.1.0-0001).
-build: 55
+build: 56
 displayname: MailPlus Setup Assistant
-description: Helper for Synology MailPlus Server that sets up sending and receiving mail and explains mail problems
 # Package Center and DSM window icon: a square PNG of at least 256x256, or a
 # folder of icon_<size>.png. Omit to use the SDK default icon.
 icon: assets/icon
@@ -50,17 +49,17 @@ ui:
 i18n:
   messages: i18n/messages
   glossary: i18n/glossary.json
-  # Package Center text per language (INFO displayname_<lang>/description_<lang>).
-  # English comes from displayname/description above.
+  # Package Center names per language (INFO displayname_<lang>). Descriptions and
+  # release notes come only from the catalog (SYNOPKGLAND_CATALOG or --catalog).
   info:
-    zh-TW: { displayname: "MailPlus 設定助理", description: "協助 Synology MailPlus Server 設定寄件與收件，並說明郵件問題的輔助工具" }
-    zh-CN: { displayname: "MailPlus 设置助手", description: "协助 Synology MailPlus Server 设置发件与收件，并说明邮件问题的辅助工具" }
-    ja: { displayname: "MailPlus セットアップアシスタント", description: "Synology MailPlus Server の送受信の設定を手伝い、メールの問題を説明する補助ツール" }
-    ko: { displayname: "MailPlus 설정 도우미", description: "Synology MailPlus Server의 메일 송수신 설정을 돕고 메일 문제를 설명하는 도우미" }
-    de: { displayname: "MailPlus-Einrichtungsassistent", description: "Hilfswerkzeug für Synology MailPlus Server, das Senden und Empfangen einrichtet und E-Mail-Probleme erklärt" }
-    fr: { displayname: "Assistant de configuration MailPlus", description: "Outil d’aide pour Synology MailPlus Server qui configure l’envoi et la réception et explique les problèmes de messagerie" }
-    es: { displayname: "Asistente de configuración de MailPlus", description: "Herramienta auxiliar para Synology MailPlus Server que configura el envío y la recepción y explica los problemas de correo" }
-    it: { displayname: "Assistente di configurazione MailPlus", description: "Strumento di supporto per Synology MailPlus Server che configura invio e ricezione e spiega i problemi di posta" }
+    zh-TW: { displayname: "MailPlus 設定助理" }
+    zh-CN: { displayname: "MailPlus 设置助手" }
+    ja: { displayname: "MailPlus セットアップアシスタント" }
+    ko: { displayname: "MailPlus 설정 도우미" }
+    de: { displayname: "MailPlus-Einrichtungsassistent" }
+    fr: { displayname: "Assistant de configuration MailPlus" }
+    es: { displayname: "Asistente de configuración de MailPlus" }
+    it: { displayname: "Assistente di configurazione MailPlus" }
 
 capabilities:
   # jobs gives the supervised background worker that hosts the relay, the

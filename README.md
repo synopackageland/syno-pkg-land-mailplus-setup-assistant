@@ -25,9 +25,15 @@ profiles and runs the optional SMTP relay.
 
 Use Node.js 24, npm and Go 1.26.10 or newer.
 
+Package Center descriptions and release notes come only from the
+[catalog](https://github.com/synopackageland/catalog). Point
+`SYNOPKGLAND_CATALOG` at a checkout of its `catalog.yaml` (or pass
+`--catalog <file>`) before checking or building.
+
 ```sh
 npm ci --include=dev
 (cd frontend && npm ci --include=dev)
+export SYNOPKGLAND_CATALOG=/path/to/catalog/catalog.yaml
 npx --no synopkgland check --json
 npx --no synopkgland build --json
 ```
