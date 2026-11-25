@@ -1546,7 +1546,7 @@ onUnmounted(() => {
 
 .msa-cf-stage {
  position: relative;
- padding: var(--ui-space-4) 2px var(--ui-space-3);
+ padding: var(--ui-space-4) 10px var(--ui-space-3);
  overflow: visible;
 }
 
@@ -2156,8 +2156,8 @@ onUnmounted(() => {
 
 @container (max-width: 760px) {
  .msa-cf-grid {
-  grid-template-columns: minmax(126px, 140px) minmax(0, 1.02fr) minmax(0, 1fr);
-  gap: 28px;
+  grid-template-columns: minmax(122px, 128px) minmax(0, 1.02fr) minmax(0, 1fr);
+  gap: 22px;
  }
 }
 

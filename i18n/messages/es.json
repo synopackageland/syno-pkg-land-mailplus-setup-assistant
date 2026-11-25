@@ -1117,7 +1117,7 @@
   "ui.cfFlow.node.mailplus": "MailPlus Server",
   "ui.cfFlow.node.mailplusSub": "Buzón · STARTTLS",
   "ui.cfFlow.node.relay": "Relay SMTP local",
-  "ui.cfFlow.node.relaySub": ":2525 → TLS :465 · 50 / 25 MiB",
+  "ui.cfFlow.node.relaySub": ":2525 → TLS :465 · 50/25 MiB",
   "ui.cfFlow.node.sending": "Email Sending",
   "ui.cfFlow.node.sendingSub": "Firma DKIM y envía",
   "ui.cfFlow.tag.native": "Nativo",
