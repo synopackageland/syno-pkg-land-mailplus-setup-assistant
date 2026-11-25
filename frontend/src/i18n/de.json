@@ -1,0 +1,20 @@
+{
+  "signOut": "Abmelden",
+  "settings": "Paketeinstellungen",
+  "actionRequired": "Aktion erforderlich",
+  "statusTitle": "Paketstatus",
+  "statusError": "Status nicht verfügbar. Schließen Sie die App, öffnen Sie sie wieder und versuchen Sie es erneut",
+  "greeting": "Begrüßung",
+  "save": "Speichern",
+  "saved": "Begrüßung gespeichert",
+  "errors": {
+    "session_required": "Ihre DSM-Sitzung ist abgelaufen. Melden Sie sich erneut an",
+    "admin_required": "Diese Aktion muss ein DSM-Administrator ausführen",
+    "app_privilege_denied": "Die DSM-Anwendungsberechtigungen erlauben diesem Konto nicht, diese App zu verwenden",
+    "auth_unavailable": "Die DSM-Authentifizierung ist nicht verfügbar. Schließen Sie die App, öffnen Sie sie wieder und versuchen Sie es erneut",
+    "request_failed": "Die Anfrage ist fehlgeschlagen. Versuchen Sie es erneut oder schließen Sie die App und öffnen Sie sie wieder"
+  },
+  "packageName": "Paketname",
+  "user": "Benutzer",
+  "version": "Version"
+}

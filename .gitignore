@@ -1,0 +1,21 @@
+dist/
+node_modules/
+
+# Private NAS smoke sessions and credentials
+.e2e/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+.npmrc
+
+# Local secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!.env.dist
+!.env.defaults

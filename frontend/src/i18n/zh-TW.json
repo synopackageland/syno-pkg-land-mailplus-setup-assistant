@@ -1,0 +1,20 @@
+{
+  "signOut": "登出",
+  "settings": "套件設定",
+  "actionRequired": "需要處理",
+  "statusTitle": "套件狀態",
+  "statusError": "無法載入狀態。請關閉後重新開啟此 App 再試一次",
+  "greeting": "問候語",
+  "save": "儲存",
+  "saved": "問候語已儲存",
+  "errors": {
+    "session_required": "DSM 登入已逾時，請重新登入",
+    "admin_required": "此操作須由 DSM 管理員執行",
+    "app_privilege_denied": "DSM 應用程式權限不允許此帳號使用這個 App",
+    "auth_unavailable": "DSM 驗證目前無法使用。請關閉後重新開啟此 App，再試一次",
+    "request_failed": "要求失敗。請再試一次，或關閉後重新開啟此 App"
+  },
+  "packageName": "套件名稱",
+  "user": "使用者帳號",
+  "version": "版本"
+}

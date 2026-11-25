@@ -1,0 +1,94 @@
+.dsmapp-vue-root {height: 100%; min-height: 0; width: 100%; overflow: hidden;}
+[data-ui-app] .integration-app {padding: 0 var(--ui-page-padding-x); color: var(--ui-text); font-family: var(--ui-font-sans); font-size: var(--ui-font-size); line-height: var(--ui-line-height);}
+/* The App's pages and their sections stack at the UI section gap, as PageContent's children do. */
+[data-ui-app] .integration-app, [data-ui-app] .integration-app > [data-page] {display: flex; flex-direction: column; gap: var(--ui-section-gap);}
+[data-ui-app] .integration-help {color: var(--ui-text);}
+[data-ui-app] .integration-actions {display: flex; flex-wrap: wrap; gap: var(--ui-space-2);}
+[data-ui-app] .nas-picker {max-height: 55vh; overflow: auto; overflow-wrap: anywhere;}
+/* MailPlus Setup Assistant (msa-): blocks are spaced with gap, never margins; colours and type come from theme tokens. Carried over from Home Keeper (hk-). */
+[data-ui-app] .msa-page {display: flex; flex-direction: column; gap: var(--ui-section-gap);}
+[data-ui-app] .msa-quiet {color: var(--ui-text-secondary);}
+[data-ui-app] .msa-inline {display: inline-flex; align-items: center; gap: var(--ui-space-2);}
+[data-ui-app] .msa-row-actions {display: flex; flex-wrap: wrap; gap: var(--ui-space-2);}
+[data-ui-app] .msa-not-run {display: flex; flex-direction: column; gap: var(--ui-space-3);}
+[data-ui-app] .msa-findings {display: flex; flex-direction: column; gap: var(--ui-space-3);}
+/* A wizard block: a heading row (an optional action at its end), then its content, one rhythm (space-3 inside, the step's Space between blocks). */
+[data-ui-app] .msa-block {display: flex; flex-direction: column; gap: var(--ui-space-3);}
+[data-ui-app] .msa-block + .msa-block {padding-block-start: var(--ui-space-4); border-block-start: 1px solid var(--ui-border);}
+[data-ui-app] .msa-block-head {display: flex; align-items: center; justify-content: space-between; gap: var(--ui-space-3); min-height: 28px;}
+[data-ui-app] .msa-finding-title {display: inline-flex; align-items: center; gap: var(--ui-space-2); flex-wrap: wrap;}
+[data-ui-app] .msa-finding-body {display: flex; flex-direction: column; gap: var(--ui-space-3);}
+[data-ui-app] .msa-finding-part {display: flex; flex-direction: column; gap: var(--ui-space-1);}
+[data-ui-app] .msa-evidence {padding: var(--ui-space-2); max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--ui-font-mono); font-size: 12px; background: var(--ui-surface-inset); border-radius: var(--ui-radius-sm);}
+[data-ui-app] .msa-card-text {display: flex; flex-direction: column; gap: var(--ui-space-1);}
+[data-ui-app] .msa-card-module {color: var(--ui-text-secondary); font-size: 12px;}
+[data-ui-app] .msa-timeline {display: flex; flex-direction: column;}
+[data-ui-app] .msa-wizard {height: 100%;}
+[data-ui-app] .msa-step {display: flex; flex-direction: column; gap: var(--ui-space-4);}
+[data-ui-app] .msa-running {display: flex; flex-direction: column; gap: var(--ui-space-3);}
+[data-ui-app] .msa-wizard-footer {display: flex; align-items: center; gap: var(--ui-space-2); width: 100%;}
+[data-ui-app] .msa-spacer {flex: 1;}
+[data-ui-app] .msa-facts {display: grid; gap: var(--ui-space-2);}
+[data-ui-app] .msa-fact {display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, auto); align-items: center; gap: var(--ui-space-2); min-height: 24px;}
+[data-ui-app] .msa-fact-value {color: var(--ui-text-secondary); text-align: end; overflow-wrap: anywhere;}
+[data-ui-app] .msa-fact-note {grid-column: 2 / -1; color: var(--ui-text-secondary); font-size: var(--ui-font-size-sm);}
+[data-ui-app] .msa-planned-group {display: flex; flex-direction: column; gap: var(--ui-space-1);}
+[data-ui-app] .msa-planned-group > .msa-fact-note {padding-inline-start: var(--ui-space-5);}
+[data-ui-app] .msa-changes, [data-ui-app] .msa-change-group {display: flex; flex-direction: column; gap: var(--ui-space-3);}
+[data-ui-app] .msa-change-target {font-weight: 600;}
+[data-ui-app] .msa-change-list {display: flex; flex-direction: column; gap: var(--ui-space-3); padding-inline-start: var(--ui-space-4); border-inline-start: 2px solid var(--ui-surface-selected);}
+[data-ui-app] .msa-change {display: flex; flex-direction: column; gap: var(--ui-space-1);}
+[data-ui-app] .msa-change-diff {display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px var(--ui-space-2); font-family: var(--ui-font-mono); font-size: 12px; overflow-wrap: anywhere;}
+[data-ui-app] .msa-diff-label {color: var(--ui-text-secondary); font-family: var(--ui-font-sans);}
+[data-ui-app] .msa-before {color: var(--ui-text-secondary); text-decoration: line-through;}
+[data-ui-app] .msa-after {color: var(--ui-text); font-weight: 600;}
+@media (max-width: 520px) {[data-ui-app] .msa-fact {grid-template-columns: auto minmax(0, 1fr);} [data-ui-app] .msa-fact-value {grid-column: 2; text-align: start;}}
+[data-ui-app] .msa-consent {display: flex; flex-direction: column; gap: var(--ui-space-3);}
+[data-ui-app] .msa-consent-apis, [data-ui-app] .msa-profiles {display: flex; flex-direction: column; gap: var(--ui-space-3);}
+[data-ui-app] .msa-profile {display: flex; flex-direction: column; gap: var(--ui-space-1); padding-block: var(--ui-space-2); border-block-end: 1px solid var(--ui-border);}
+[data-ui-app] .msa-profile:last-child {border-block-end: 0;}
+[data-ui-app] .msa-kept {display: flex; flex-direction: column; gap: var(--ui-space-2); padding-block: var(--ui-space-2);}
+[data-ui-app] .msa-kept + .msa-kept {border-block-start: 1px solid var(--ui-border);}
+[data-ui-app] .msa-kept-row {display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-2) var(--ui-space-4); min-height: 32px;}
+[data-ui-app] .msa-kept-main {display: flex; flex-direction: column; min-width: 0;}
+[data-ui-app] .msa-kept-domain {font-weight: 600; color: var(--ui-text); overflow-wrap: anywhere;}
+[data-ui-app] .msa-kept-actions {display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-space-2);}
+[data-ui-app] .msa-small {font-size: 12px;}
+[data-ui-app] .msa-profile-head {display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-2);}
+[data-ui-app] .msa-profile-title, [data-ui-app] .msa-apis-title {font-weight: 600;}
+[data-ui-app] .msa-apis {display: flex; flex-direction: column; gap: var(--ui-space-1);}
+[data-ui-app] .msa-apis-list {display: flex; flex-direction: column; padding-inline-start: var(--ui-space-4); font-family: var(--ui-font-mono); font-size: 12px; color: var(--ui-text-secondary); overflow-wrap: anywhere;}
+[data-ui-app] .msa-subtitle {font-weight: 600;}
+[data-ui-app] .msa-lines {display: flex; flex-direction: column; gap: var(--ui-space-2);}
+[data-ui-app] .msa-zone-help {display: flex; flex-direction: column; gap: var(--ui-space-2);}
+[data-ui-app] .msa-copy-values {display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: var(--ui-space-1) var(--ui-space-4);}
+[data-ui-app] .msa-copy-value {display: contents;}
+[data-ui-app] .msa-copy-label {color: var(--ui-text-secondary);}
+[data-ui-app] .msa-copy-text {display: flex; align-items: center; gap: var(--ui-space-1); min-width: 0;}
+[data-ui-app] .msa-copy-value code {font-family: var(--ui-font-mono, monospace); overflow-wrap: anywhere;}
+[data-ui-app] .msa-handoff {display: flex; flex-direction: column; align-items: flex-start; gap: var(--ui-space-3);}
+[data-ui-app] .msa-paths {display: flex; flex-direction: column; gap: var(--ui-space-2);}
+[data-ui-app] .msa-path-title {font-weight: 600;}
+[data-ui-app] .msa-path-why {display: flex; flex-direction: column; gap: var(--ui-space-1); padding-inline-start: var(--ui-space-4); color: var(--ui-text-secondary);}
+[data-ui-app] .msa-diag-result {display: flex; flex-direction: column; gap: var(--ui-space-4);}
+[data-ui-app] .msa-others {display: flex; flex-direction: column; gap: var(--ui-space-2);}
+[data-ui-app] .msa-other {display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--ui-space-2); overflow-wrap: anywhere;}
+[data-ui-app] .msa-other-icon {width: 16px; height: 16px; color: var(--ui-text-secondary);}
+[data-ui-app] .msa-other[data-state="ok"] .msa-other-icon {color: var(--ui-success-text);}
+/* The route step's headline and the two ways' pictures (MailWayPicture.vue): theme tokens only, so light and dark both hold. */
+[data-ui-app] .msa-key {display: inline-flex; align-items: center; gap: var(--ui-space-2); font-size: 15px; font-weight: 600; color: var(--ui-text);}
+[data-ui-app] .msa-key-icon {flex: none; width: 20px; height: 20px; color: var(--ui-success-text);}
+[data-ui-app] .msa-way-picture {display: block; width: 100%; max-width: 220px; height: auto; font-family: var(--ui-font-sans); overflow: visible;}
+[data-ui-app] .msa-way-icon {color: var(--ui-text-secondary);}
+[data-ui-app] .msa-way-picture [data-node="cloudflare"] .msa-way-icon {color: var(--ui-primary);}
+[data-ui-app] .msa-way-label {font-size: 12px; fill: var(--ui-text-secondary);}
+[data-ui-app] .msa-way-path {stroke: var(--ui-primary); stroke-width: 2; stroke-linecap: round;}
+[data-ui-app] .msa-way-head {fill: var(--ui-primary);}
+/* The route cards show the mini picture in the card's icon tile, which the UI SDK draws 32 px square. */
+[data-ui-app] [data-routes] [data-ui-choice-card-icon]:has(.msa-way-picture) {width: 100%; max-width: 200px; height: auto; background: none; justify-content: flex-start;}
+[data-ui-app] [data-routes] [data-ui-choice-card-icon] .msa-way-picture {width: 100%; height: auto;}
+[data-ui-app] .msa-plan-note {display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--ui-space-2); font-size: 12px;}
+[data-ui-app] .msa-remove-list {list-style: disc; padding-inline-start: var(--ui-space-5); display: grid; gap: var(--ui-space-1);}
+/* A removal's records Cloudflare locked: the explanation, the records (monospace), where to go, the warning. */
+[data-ui-app] .msa-locked {display: flex; flex-direction: column; gap: var(--ui-space-2);}
+[data-ui-app] .msa-locked-records {display: flex; flex-direction: column; gap: var(--ui-space-1); font-family: var(--ui-font-mono); font-size: 12px; overflow-wrap: anywhere;}

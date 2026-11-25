@@ -1,0 +1,1 @@
+{"main_module":"inbound-worker.mjs","compatibility_date":"2026-11-06","bindings":[{"type":"vpc_service","name":"NAS","service_id":"service"},{"type":"json","name":"CONFIG","json":{"ehlo":"mail.example.test","domain":"mail.example.test","maxBytes":10485760}}],"tags":["syno-home-keeper:fixture"]}

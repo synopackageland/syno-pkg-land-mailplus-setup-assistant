@@ -1,0 +1,106 @@
+{
+  "app.status": {
+    "permission": "administrators",
+    "effect": "read"
+  },
+  "dsm.authority.grant": {
+    "permission": "administrators",
+    "effect": "write"
+  },
+  "dsm.authority.revoke": {
+    "permission": "administrators",
+    "effect": "write"
+  },
+  "dsm.authority.status": {
+    "permission": "administrators",
+    "effect": "read"
+  },
+  "executor.control": {
+    "permission": "administrators",
+    "effect": "destructive"
+  },
+  "executor.status": {
+    "permission": "administrators",
+    "effect": "read"
+  },
+  "mail.cloudflare.remove": {
+    "permission": "administrators",
+    "effect": "write"
+  },
+  "mail.diagnose.next": {
+    "permission": "administrators",
+    "effect": "read"
+  },
+  "mail.diagnose.start": {
+    "permission": "administrators",
+    "effect": "read"
+  },
+  "mail.diagnose.symptoms": {
+    "permission": "administrators",
+    "effect": "read"
+  },
+  "mail.inbound.status": {
+    "permission": "administrators",
+    "effect": "read"
+  },
+  "mail.inbound.sync": {
+    "permission": "administrators",
+    "effect": "write"
+  },
+  "mail.inbound.token": {
+    "permission": "administrators",
+    "effect": "write"
+  },
+  "mail.mailplus.status": {
+    "permission": "administrators",
+    "effect": "read"
+  },
+  "mail.relay.set": {
+    "permission": "administrators",
+    "effect": "write"
+  },
+  "mail.relay.status": {
+    "permission": "administrators",
+    "effect": "read"
+  },
+  "mail.setup.apply": {
+    "permission": "administrators",
+    "effect": "write"
+  },
+  "mail.setup.cloudflare": {
+    "permission": "administrators",
+    "effect": "write"
+  },
+  "mail.setup.decide": {
+    "permission": "administrators",
+    "effect": "write"
+  },
+  "mail.setup.detect": {
+    "permission": "administrators",
+    "effect": "write"
+  },
+  "mail.setup.permissions": {
+    "permission": "administrators",
+    "effect": "write"
+  },
+  "mail.setup.preview": {
+    "permission": "administrators",
+    "effect": "write"
+  },
+  "mail.setup.receivemodes": {
+    "permission": "administrators",
+    "effect": "read"
+  },
+  "mail.setup.start": {
+    "permission": "administrators",
+    "effect": "write"
+  },
+  "mail.setup.status": {
+    "permission": "administrators",
+    "effect": "read"
+  },
+  "mail.setup.zones": {
+    "permission": "administrators",
+    "effect": "write"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "signOut": "Cerrar sesión",
+  "settings": "Configuración del paquete",
+  "actionRequired": "Acción necesaria",
+  "statusTitle": "Estado del paquete",
+  "statusError": "Estado no disponible. Cierre y vuelva a abrir la app para intentarlo de nuevo",
+  "greeting": "Saludo",
+  "save": "Guardar",
+  "saved": "Saludo guardado",
+  "errors": {
+    "session_required": "Su sesión de DSM ha caducado. Vuelva a iniciar sesión",
+    "admin_required": "Un administrador de DSM debe realizar esta acción",
+    "app_privilege_denied": "Los privilegios de aplicación de DSM no permiten que esta cuenta use esta aplicación",
+    "auth_unavailable": "La autenticación de DSM no está disponible. Cierre y vuelva a abrir la app, y vuelva a intentarlo",
+    "request_failed": "La solicitud falló. Inténtelo de nuevo, o cierre y vuelva a abrir la app"
+  },
+  "packageName": "Nombre del paquete",
+  "user": "Usuario",
+  "version": "Versión"
+}

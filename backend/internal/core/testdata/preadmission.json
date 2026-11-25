@@ -1,0 +1,24 @@
+{
+  "source": "github.com/synopackageland/syno-pkg-land-sdk@v0.53.24 spec/protocol/v1/errors.json (identical to v0.53.19 and v0.53.20)",
+  "sha256": "a6ae68b76ce9fdc88a873acc757a1a4e0b6adb0bf781e24e0ea33dceb2830e63",
+  "comment": "Codes with preAdmission: true, copied for TestBeforeAdmissionMatchesTheProtocolSpec. The test also checks this copy against the pinned module's spec file.",
+  "preAdmission": [
+    "ADMIN_REQUIRED",
+    "APP_DENIED",
+    "AUTH_DENIED",
+    "DELEGATION_DENIED",
+    "EXECUTOR_STARTING",
+    "IDENTITY_CHANGED",
+    "INELIGIBLE",
+    "INVALID_REQUEST",
+    "PEER_DENIED",
+    "PERMISSION_DENIED",
+    "POLICY_DENIED",
+    "REQUEST_TOO_LARGE",
+    "ROOT_BUSY",
+    "ROOT_JOB_NOT_FOUND",
+    "SCOPE_APPROVAL_STALE",
+    "SCOPE_DENIED",
+    "UNKNOWN_OP"
+  ]
+}

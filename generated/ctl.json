@@ -1,0 +1,276 @@
+{
+  "commands": {
+    "app.status": {
+      "summary": "Read App status",
+      "ai": "read",
+      "cli": [
+        "app",
+        "status"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "app.status"
+      }
+    },
+    "dsm.authority.status": {
+      "summary": "Read approved DSM profiles and caller-bound grant status",
+      "ai": "read",
+      "cli": [
+        "dsm",
+        "authority",
+        "status"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "dsm.authority.status"
+      }
+    },
+    "mail.relay.status": {
+      "summary": "Read the mail relay service state",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "relay",
+        "status"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.relay.status"
+      }
+    },
+    "mail.mailplus.status": {
+      "summary": "Read whether MailPlus Server is installed and running",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "mailplus",
+        "status"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.mailplus.status"
+      }
+    },
+    "mail.setup.status": {
+      "summary": "Read the setup transaction state",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "setup",
+        "status"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.status"
+      }
+    },
+    "mail.diagnose.symptoms": {
+      "summary": "List the mail symptoms the diagnosis covers",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "diagnose",
+        "symptoms"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.diagnose.symptoms"
+      }
+    },
+    "mail.diagnose.start": {
+      "summary": "Start a read-only mail diagnosis for one symptom",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "diagnose",
+        "start"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "symptom": {
+            "type": "string",
+            "enum": [
+              "cannot-send",
+              "bounce-or-spam",
+              "cannot-receive",
+              "phone-connect",
+              "not-sure"
+            ]
+          }
+        },
+        "required": [
+          "symptom"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.diagnose.start"
+      }
+    },
+    "mail.diagnose.next": {
+      "summary": "Run the next read-only check of a diagnosis",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "diagnose",
+        "next"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.diagnose.next"
+      }
+    },
+    "mail.setup.receivemodes": {
+      "summary": "Read which ways of receiving through Cloudflare the setup's domain allows",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "setup",
+        "receive-modes"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.receivemodes"
+      }
+    },
+    "mail.inbound.status": {
+      "summary": "List the kept Cloudflare setups and the last mailbox sync of each",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "inbound",
+        "status"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.inbound.status"
+      }
+    }
+  }
+}

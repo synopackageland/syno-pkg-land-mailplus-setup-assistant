@@ -1,0 +1,277 @@
+{
+  "tools": [
+    {
+      "name": "app.status",
+      "description": "Read App status",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ai": "read",
+      "flow": {
+        "type": "invoke",
+        "method": "app.status"
+      },
+      "execution": "flow"
+    },
+    {
+      "name": "dsm.authority.status",
+      "description": "Read approved DSM profiles and caller-bound grant status",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ai": "read",
+      "flow": {
+        "type": "invoke",
+        "method": "dsm.authority.status"
+      },
+      "execution": "flow"
+    },
+    {
+      "name": "mail.diagnose.next",
+      "description": "Run the next read-only check of a diagnosis",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ai": "read",
+      "flow": {
+        "type": "invoke",
+        "method": "mail.diagnose.next"
+      },
+      "execution": "flow"
+    },
+    {
+      "name": "mail.diagnose.start",
+      "description": "Start a read-only mail diagnosis for one symptom",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "symptom": {
+            "type": "string",
+            "enum": [
+              "cannot-send",
+              "bounce-or-spam",
+              "cannot-receive",
+              "phone-connect",
+              "not-sure"
+            ]
+          }
+        },
+        "required": [
+          "symptom"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ai": "read",
+      "flow": {
+        "type": "invoke",
+        "method": "mail.diagnose.start"
+      },
+      "execution": "flow"
+    },
+    {
+      "name": "mail.diagnose.symptoms",
+      "description": "List the mail symptoms the diagnosis covers",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ai": "read",
+      "flow": {
+        "type": "invoke",
+        "method": "mail.diagnose.symptoms"
+      },
+      "execution": "flow"
+    },
+    {
+      "name": "mail.inbound.status",
+      "description": "List the kept Cloudflare setups and the last mailbox sync of each",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ai": "read",
+      "flow": {
+        "type": "invoke",
+        "method": "mail.inbound.status"
+      },
+      "execution": "flow"
+    },
+    {
+      "name": "mail.mailplus.status",
+      "description": "Read whether MailPlus Server is installed and running",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ai": "read",
+      "flow": {
+        "type": "invoke",
+        "method": "mail.mailplus.status"
+      },
+      "execution": "flow"
+    },
+    {
+      "name": "mail.relay.status",
+      "description": "Read the mail relay service state",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ai": "read",
+      "flow": {
+        "type": "invoke",
+        "method": "mail.relay.status"
+      },
+      "execution": "flow"
+    },
+    {
+      "name": "mail.setup.receivemodes",
+      "description": "Read which ways of receiving through Cloudflare the setup's domain allows",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ai": "read",
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.receivemodes"
+      },
+      "execution": "flow"
+    },
+    {
+      "name": "mail.setup.status",
+      "description": "Read the setup transaction state",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ai": "read",
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.status"
+      },
+      "execution": "flow"
+    }
+  ]
+}

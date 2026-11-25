@@ -1,0 +1,20 @@
+{
+  "signOut": "Disconnetti",
+  "settings": "Impostazioni del pacchetto",
+  "actionRequired": "Azione richiesta",
+  "statusTitle": "Stato del pacchetto",
+  "statusError": "Stato non disponibile. Chiudi e riapri l’app per riprovare",
+  "greeting": "Saluto",
+  "save": "Salva",
+  "saved": "Saluto salvato",
+  "errors": {
+    "session_required": "La sessione DSM è scaduta. Accedere di nuovo",
+    "admin_required": "Questa azione deve essere eseguita da un amministratore DSM",
+    "app_privilege_denied": "I privilegi delle applicazioni DSM non consentono a questo account di usare questa app",
+    "auth_unavailable": "L’autenticazione DSM non è disponibile. Chiudi e riapri l’app, poi riprova",
+    "request_failed": "Richiesta non riuscita. Riprova oppure chiudi e riapri l’app"
+  },
+  "packageName": "Nome pacchetto",
+  "user": "Utente",
+  "version": "Versione"
+}

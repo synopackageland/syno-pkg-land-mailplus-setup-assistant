@@ -1,0 +1,20 @@
+{
+  "signOut": "Sign out",
+  "settings": "Package settings",
+  "actionRequired": "Action required",
+  "statusTitle": "Package status",
+  "statusError": "Unable to load status. Close and reopen the app to try again",
+  "greeting": "Greeting",
+  "save": "Save",
+  "saved": "Greeting saved",
+  "errors": {
+    "session_required": "Your DSM session expired. Sign in again",
+    "admin_required": "A DSM administrator must perform this action",
+    "app_privilege_denied": "DSM Application Privileges do not allow this account to use this app",
+    "auth_unavailable": "DSM authentication is unavailable. Close and reopen the app, then try again",
+    "request_failed": "The request failed. Try again, or close and reopen the app"
+  },
+  "packageName": "Package name",
+  "user": "User",
+  "version": "Version"
+}

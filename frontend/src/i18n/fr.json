@@ -1,0 +1,20 @@
+{
+  "signOut": "Se déconnecter",
+  "settings": "Paramètres du paquet",
+  "actionRequired": "Action requise",
+  "statusTitle": "État du paquet",
+  "statusError": "État indisponible. Fermez puis rouvrez l’app pour réessayer",
+  "greeting": "Message d’accueil",
+  "save": "Sauvegarder",
+  "saved": "Message d’accueil enregistré",
+  "errors": {
+    "session_required": "Votre session DSM a expiré. Reconnectez-vous",
+    "admin_required": "Un administrateur DSM doit effectuer cette action",
+    "app_privilege_denied": "Les privilèges d’application DSM n’autorisent pas ce compte à utiliser cette application",
+    "auth_unavailable": "L’authentification DSM n’est pas disponible. Fermez puis rouvrez l’app, puis réessayez",
+    "request_failed": "La requête a échoué. Réessayez, ou fermez puis rouvrez l’app"
+  },
+  "packageName": "Nom du paquet",
+  "user": "Utilisateur",
+  "version": "Version"
+}

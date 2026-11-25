@@ -1,0 +1,148 @@
+# Standalone native DSM package: an unsigned SPK that runs as its own package
+# `synopkgland build` reads this file.
+schema: 2
+
+# INFO.package: letters and digits, starting with a letter. It also names the
+# DSM app (SYNO.SDS.<package>) and the CGI URL /webman/3rdparty/<package>/.
+package: SynoMailPlusSetupAssistant
+version: 0.1.0
+# Increase for every SPK you hand out with the same version (INFO 0.1.0-0001).
+build: 52
+displayname: MailPlus Setup Assistant
+description: Helper for Synology MailPlus Server that sets up sending and receiving mail and explains mail problems
+# Package Center and DSM window icon: a square PNG of at least 256x256, or a
+# folder of icon_<size>.png. Omit to use the SDK default icon.
+icon: assets/icon
+maintainer: Syno Package Land
+entry: admin-only
+metadata:
+  license: Apache-2.0
+  source_url: https://github.com/synopackageland/syno-pkg-land-mailplus-setup-assistant
+os_min_ver: "7.2-64570"
+
+# One SPK per architecture. Supported: x86_64, aarch64, armv7 (add it here to
+# build it; armv7 jobs/delegate/root-ops/daemon are built but not NAS-verified).
+arches: [x86_64, aarch64]
+
+# The mail relay MailPlus delivers to (loopback only). The port is
+# configurable in the relay's own settings within this range.
+tcp_listeners:
+  mail_relay:
+    port: 2525
+    port_range: [1024, 65535]
+
+backend:
+  kind: go
+  dir: backend
+  main: ./cmd/app
+
+ui:
+  # UI SDK frontends open a DSM window; Portal is a separate opt-in.
+  # Static files served at /webman/3rdparty/<package>/app/. app.js and app.css
+  # are required; anything else (images, chunks) is copied as is.
+  dir: frontend/dist
+  build: {cwd: frontend, command: [npm, run, build]}
+
+# UI languages: i18n/messages/<locale>.json for en, zh-TW, zh-CN, ja, ko, de,
+# fr, es and it (DSM's other languages fall back to English). build checks
+# that every language has the en.json keys and placeholders, and that the keys
+# listed in the glossary use DSM's own wording.
+i18n:
+  messages: i18n/messages
+  glossary: i18n/glossary.json
+  # Package Center text per language (INFO displayname_<lang>/description_<lang>).
+  # English comes from displayname/description above.
+  info:
+    zh-TW: { displayname: "MailPlus 設定助理", description: "協助 Synology MailPlus Server 設定寄件與收件，並說明郵件問題的輔助工具" }
+    zh-CN: { displayname: "MailPlus 设置助手", description: "协助 Synology MailPlus Server 设置发件与收件，并说明邮件问题的辅助工具" }
+    ja: { displayname: "MailPlus セットアップアシスタント", description: "Synology MailPlus Server の送受信の設定を手伝い、メールの問題を説明する補助ツール" }
+    ko: { displayname: "MailPlus 설정 도우미", description: "Synology MailPlus Server의 메일 송수신 설정을 돕고 메일 문제를 설명하는 도우미" }
+    de: { displayname: "MailPlus-Einrichtungsassistent", description: "Hilfswerkzeug für Synology MailPlus Server, das Senden und Empfangen einrichtet und E-Mail-Probleme erklärt" }
+    fr: { displayname: "Assistant de configuration MailPlus", description: "Outil d’aide pour Synology MailPlus Server qui configure l’envoi et la réception et explique les problèmes de messagerie" }
+    es: { displayname: "Asistente de configuración de MailPlus", description: "Herramienta auxiliar para Synology MailPlus Server que configura el envío y la recepción y explica los problemas de correo" }
+    it: { displayname: "Assistente di configurazione MailPlus", description: "Strumento di supporto per Synology MailPlus Server che configura invio e ricezione e spiega i problemi di posta" }
+
+capabilities:
+  # jobs gives the supervised background worker that hosts the relay, the
+  # setup transactions and the diagnose runs. There are no SDK file jobs: no
+  # bg.* routes, no job runner (removed in build 37).
+  jobs: true
+  webapi:
+    mail-read:
+      purpose: Read MailPlus configuration and diagnostic evidence
+      purpose_i18n:
+        en: Read MailPlus configuration and diagnostic evidence
+        zh-TW: 讀取 MailPlus 設定與診斷資料
+        zh-CN: 读取 MailPlus 设置与诊断数据
+        de: MailPlus-Konfiguration und Diagnosedaten lesen
+        fr: Lire la configuration de MailPlus et les données de diagnostic
+        ja: MailPlus の設定と診断データを読み取る
+        ko: MailPlus 구성 및 진단 데이터 읽기
+        es: Leer la configuración de MailPlus y los datos de diagnóstico
+        it: Leggere la configurazione di MailPlus e i dati diagnostici
+      apis:
+        SYNO.API.Info: {query: [1]}
+        SYNO.Core.Package: {list: [2]}
+        SYNO.Core.Certificate.CRT: {list: [1]}
+        SYNO.Core.Network: {get: [2]}
+        SYNO.MailPlusServer.Service.SMTP: {get: [1]}
+        SYNO.MailPlusServer.Domain: {list: [1], get_security: [2]}
+        SYNO.MailPlusServer.Domain.User: {list: [1]}
+        SYNO.MailPlusServer.License: {get_user_limit: [1], get_active_user_num: [1]}
+        SYNO.MailPlusServer.SMTP.Delivery: {get_type: [3], get_multiple: [3]}
+        SYNO.MailPlusServer.SMTP.RelayControl: {get: [1]}
+        SYNO.MailPlusServer.Queue: {list: [1]}
+        SYNO.MailPlusServer.Audit.TransactionLog: {list: [1]}
+        SYNO.MailPlusServer.Util: {initial_check: [2]}
+    mail-write:
+      purpose: Apply and restore previewed MailPlus SMTP, DKIM, default relay and mail domain changes
+      purpose_i18n:
+        en: Apply and restore previewed MailPlus SMTP, DKIM, default relay and mail domain changes
+        zh-TW: 套用並還原已預覽的 MailPlus SMTP、DKIM、預設轉送與郵件網域變更
+        zh-CN: 应用并还原已预览的 MailPlus SMTP、DKIM、默认中继与邮件域更改
+        de: Vorab angezeigte Änderungen an MailPlus-SMTP, DKIM, Standard-Relay und Mail-Domain anwenden und zurücksetzen
+        fr: Appliquer et restaurer les modifications prévisualisées de SMTP, DKIM, du relais par défaut et du domaine de messagerie de MailPlus
+        ja: プレビュー済みの MailPlus SMTP、DKIM、既定のリレー、メールドメインの変更を適用および復元する
+        ko: 미리 본 MailPlus SMTP, DKIM, 기본 릴레이 및 메일 도메인 변경 사항 적용 및 복원
+        es: Aplicar y restaurar los cambios previsualizados de SMTP, DKIM, retransmisión predeterminada y dominio de correo de MailPlus
+        it: Applicare e ripristinare le modifiche in anteprima a SMTP, DKIM, inoltro predefinito e dominio di posta di MailPlus
+      apis:
+        SYNO.MailPlusServer.Service.SMTP: {set: [1]}
+        SYNO.MailPlusServer.Domain: {set_security: [2], create: [1], delete: [1]}
+        SYNO.MailPlusServer.SMTP.Delivery: {set_type: [3], set_multiple: [3]}
+
+# Hyper Backup lists this App as an application by default. A backup stops the
+# App, the SDK archives the package's var folder as the package account, and
+# the App starts again; a restore replaces that folder. Hyper Backup runs the
+# generated scripts/backup/ as root: a fixed script that only switches to the
+# package account. See `synopkgland skill show backup`.
+# backup:
+#   online: false          # true keeps the App running; SQLite is snapshotted
+#   data_version: "1.0"    # "major.minor"; a restore refuses newer data
+#   hook: bin/backup-hook  # optional packaged freeze/thaw executable
+# To opt out, use only:
+# backup:
+#   hyper_backup: false
+
+# Optional uninstall hook. DSM runs `exec args` as the package account on a
+# real uninstall (not an upgrade), before the executor is removed, with
+# SYNOPKGLAND_DELETE_STATE=0|1 and SYNOPKGLAND_REMOVE_DATA=0|1 from the wizard.
+# A failure or timeout is logged (syslog tag synopkgland-uninstall, output in
+# var/uninstall-hook.log) and never blocks the uninstall. The backend's
+# `uninstall` mode deletes the background job spool when the admin ticks
+# "delete state"; add uninstall.state.jobs to i18n/messages in every language.
+# uninstall:
+#   purge:
+#     exec: ui/cgi/api.cgi
+#     args: [uninstall]
+#     timeout: 60            # seconds, 2..120
+#     # root: purge          # rootOps only: root/purge.sh runs as root at
+#     #                      # uninstall, and only while its approval stands
+#   state:
+#     items:
+#       - key: jobs          # i18n key uninstall.state.jobs
+
+# Operation metadata has one source. Generate/check before building.
+ctl:
+  enabled: true
+  registry: operations.json

@@ -1,0 +1,20 @@
+{
+  "signOut": "注销",
+  "settings": "套件设置",
+  "actionRequired": "需要处理",
+  "statusTitle": "套件状态",
+  "statusError": "无法加载状态。请关闭后重新打开此 App 再试一次",
+  "greeting": "问候语",
+  "save": "保存",
+  "saved": "问候语已保存",
+  "errors": {
+    "session_required": "DSM 登录已过期，请重新登录",
+    "admin_required": "此操作必须由 DSM 管理员执行",
+    "app_privilege_denied": "DSM 应用程序权限不允许此账户使用此 App",
+    "auth_unavailable": "DSM 验证暂时不可用。请关闭后重新打开此 App，再试一次",
+    "request_failed": "请求失败。请重试，或关闭后重新打开此 App"
+  },
+  "packageName": "套件名称",
+  "user": "用户帐号",
+  "version": "版本"
+}

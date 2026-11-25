@@ -1,0 +1,20 @@
+{
+  "signOut": "サインアウト",
+  "settings": "パッケージ設定",
+  "actionRequired": "対応が必要です",
+  "statusTitle": "パッケージの状態",
+  "statusError": "ステータスを読み込めません。アプリを閉じて開き直してから、もう一度お試しください",
+  "greeting": "あいさつ",
+  "save": "保存",
+  "saved": "あいさつを保存しました",
+  "errors": {
+    "session_required": "DSM セッションの有効期限が切れました。もう一度サインインしてください",
+    "admin_required": "この操作は DSM 管理者が行う必要があります",
+    "app_privilege_denied": "DSM のアプリケーション権限により、このアカウントはこのアプリを使用できません",
+    "auth_unavailable": "DSM 認証を利用できません。アプリを閉じて開き直してから、もう一度お試しください",
+    "request_failed": "リクエストに失敗しました。もう一度お試しいただくか、アプリを閉じて開き直してください"
+  },
+  "packageName": "パッケージ名",
+  "user": "ユーザー",
+  "version": "バージョン"
+}

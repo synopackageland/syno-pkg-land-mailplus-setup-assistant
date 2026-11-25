@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "default": "administrators",
+  "methods": {
+    "app.status": "administrators",
+    "dsm.authority.grant": "administrators",
+    "dsm.authority.revoke": "administrators",
+    "dsm.authority.status": "administrators",
+    "mail.cloudflare.remove": "administrators",
+    "mail.diagnose.next": "administrators",
+    "mail.diagnose.start": "administrators",
+    "mail.diagnose.symptoms": "administrators",
+    "mail.inbound.status": "administrators",
+    "mail.inbound.sync": "administrators",
+    "mail.inbound.token": "administrators",
+    "mail.mailplus.status": "administrators",
+    "mail.relay.set": "administrators",
+    "mail.relay.status": "administrators",
+    "mail.setup.apply": "administrators",
+    "mail.setup.cloudflare": "administrators",
+    "mail.setup.decide": "administrators",
+    "mail.setup.detect": "administrators",
+    "mail.setup.permissions": "administrators",
+    "mail.setup.preview": "administrators",
+    "mail.setup.receivemodes": "administrators",
+    "mail.setup.start": "administrators",
+    "mail.setup.status": "administrators",
+    "mail.setup.zones": "administrators"
+  }
+}

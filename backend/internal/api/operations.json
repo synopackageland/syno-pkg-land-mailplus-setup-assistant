@@ -1,0 +1,886 @@
+{
+  "format": "synopkgland.api",
+  "version": 2,
+  "operations": {
+    "app.status": {
+      "summary": "Read App status",
+      "ai": "read",
+      "cli": [
+        "app",
+        "status"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "app.status"
+      }
+    },
+    "dsm.authority.status": {
+      "summary": "Read approved DSM profiles and caller-bound grant status",
+      "ai": "read",
+      "cli": [
+        "dsm",
+        "authority",
+        "status"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "dsm.authority.status"
+      }
+    },
+    "dsm.authority.grant": {
+      "summary": "Authorize a declared DSM profile until revoked",
+      "ai": "hidden",
+      "cli": [
+        "dsm",
+        "authority",
+        "grant"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "type": "string",
+            "enum": [
+              "mail-read",
+              "mail-write"
+            ]
+          },
+          "confirmed": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "profile",
+          "confirmed"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "dsm.authority.grant"
+      }
+    },
+    "dsm.authority.revoke": {
+      "summary": "Revoke the caller’s DSM profile grant",
+      "ai": "hidden",
+      "cli": [
+        "dsm",
+        "authority",
+        "revoke"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "type": "string",
+            "enum": [
+              "mail-read",
+              "mail-write"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "profile",
+          "id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "dsm.authority.revoke"
+      }
+    },
+    "mail.relay.status": {
+      "summary": "Read the mail relay service state",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "relay",
+        "status"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.relay.status"
+      }
+    },
+    "mail.mailplus.status": {
+      "summary": "Read whether MailPlus Server is installed and running",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "mailplus",
+        "status"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.mailplus.status"
+      }
+    },
+    "mail.relay.set": {
+      "summary": "Turn the mail relay service on or off",
+      "ai": "hidden",
+      "cli": [
+        "mail",
+        "relay",
+        "set"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.relay.set"
+      }
+    },
+    "mail.setup.start": {
+      "summary": "Start or resume the caller’s MailPlus setup",
+      "ai": "hidden",
+      "cli": [
+        "mail",
+        "setup",
+        "start"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.start"
+      }
+    },
+    "mail.setup.cloudflare": {
+      "summary": "Sign in to Cloudflare with one API token (sealed at once) and list its accounts",
+      "ai": "hidden",
+      "cli": [
+        "mail",
+        "setup",
+        "cloudflare"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "required": [
+          "id",
+          "token"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.cloudflare"
+      }
+    },
+    "mail.setup.zones": {
+      "summary": "Choose a Cloudflare account of the sign-in, list its zones and optionally choose one",
+      "ai": "hidden",
+      "cli": [
+        "mail",
+        "setup",
+        "zones"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "accountId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "zoneId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "poll": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "accountId"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.zones"
+      }
+    },
+    "mail.setup.detect": {
+      "summary": "Start or poll the read-only MailPlus, DNS and network detection",
+      "ai": "hidden",
+      "cli": [
+        "mail",
+        "setup",
+        "detect"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "intent": {
+            "type": "string",
+            "enum": [
+              "send",
+              "receive",
+              "both"
+            ]
+          },
+          "domain": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 253
+          },
+          "answers": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": [
+                  "own",
+                  "cloudflare"
+                ]
+              },
+              "route": {
+                "type": "string",
+                "enum": [
+                  "direct",
+                  "cloudflare"
+                ]
+              }
+            }
+          },
+          "refresh": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "intent",
+          "domain"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.detect"
+      }
+    },
+    "mail.setup.permissions": {
+      "summary": "Bind the signed-in Cloudflare account and zone and list the exact token permissions",
+      "ai": "hidden",
+      "cli": [
+        "mail",
+        "setup",
+        "permissions"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "accountId": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "zoneId": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "id",
+          "accountId",
+          "zoneId"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.permissions"
+      }
+    },
+    "mail.setup.preview": {
+      "summary": "Build the exact change plan without writing anything",
+      "ai": "hidden",
+      "cli": [
+        "mail",
+        "setup",
+        "preview"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "addresses": {
+            "type": "string",
+            "maxLength": 30000
+          },
+          "members": {
+            "type": "string",
+            "maxLength": 30000
+          },
+          "tunnel": {
+            "type": "string",
+            "minLength": 36,
+            "maxLength": 36,
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "poll": {
+            "type": "boolean"
+          },
+          "receive": {
+            "type": "string",
+            "enum": [
+              "domain",
+              "addresses"
+            ]
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.preview"
+      }
+    },
+    "mail.setup.apply": {
+      "summary": "Apply the previewed plan with snapshots, then verify",
+      "ai": "hidden",
+      "cli": [
+        "mail",
+        "setup",
+        "apply"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.apply"
+      }
+    },
+    "mail.setup.status": {
+      "summary": "Read the setup transaction state",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "setup",
+        "status"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.status"
+      }
+    },
+    "mail.setup.decide": {
+      "summary": "Keep the applied changes, roll them back, or check again",
+      "ai": "hidden",
+      "cli": [
+        "mail",
+        "setup",
+        "decide"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "choice": {
+            "type": "string",
+            "enum": [
+              "keep",
+              "rollback",
+              "verify"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "choice"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.decide"
+      }
+    },
+    "mail.diagnose.symptoms": {
+      "summary": "List the mail symptoms the diagnosis covers",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "diagnose",
+        "symptoms"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.diagnose.symptoms"
+      }
+    },
+    "mail.diagnose.start": {
+      "summary": "Start a read-only mail diagnosis for one symptom",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "diagnose",
+        "start"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "symptom": {
+            "type": "string",
+            "enum": [
+              "cannot-send",
+              "bounce-or-spam",
+              "cannot-receive",
+              "phone-connect",
+              "not-sure"
+            ]
+          }
+        },
+        "required": [
+          "symptom"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.diagnose.start"
+      }
+    },
+    "mail.diagnose.next": {
+      "summary": "Run the next read-only check of a diagnosis",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "diagnose",
+        "next"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.diagnose.next"
+      }
+    },
+    "mail.setup.receivemodes": {
+      "summary": "Read which ways of receiving through Cloudflare the setup's domain allows",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "setup",
+        "receive-modes"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.setup.receivemodes"
+      }
+    },
+    "mail.inbound.status": {
+      "summary": "List the kept Cloudflare setups and the last mailbox sync of each",
+      "ai": "read",
+      "cli": [
+        "mail",
+        "inbound",
+        "status"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.inbound.status"
+      }
+    },
+    "mail.inbound.sync": {
+      "summary": "Sync a per-address setup's Cloudflare rules with the domain's MailPlus mailboxes",
+      "ai": "hidden",
+      "cli": [
+        "mail",
+        "inbound",
+        "sync"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "poll": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.inbound.sync"
+      }
+    },
+    "mail.inbound.token": {
+      "summary": "Seal a replacement Cloudflare token for a kept setup, or forget it",
+      "ai": "hidden",
+      "cli": [
+        "mail",
+        "inbound",
+        "token"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "token": {
+            "type": "string",
+            "maxLength": 512
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.inbound.token"
+      }
+    },
+    "mail.cloudflare.remove": {
+      "summary": "Remove what a kept setup created on Cloudflare and restore MailPlus, then forget its token",
+      "ai": "hidden",
+      "cli": [
+        "mail",
+        "cloudflare",
+        "remove"
+      ],
+      "effect": "write",
+      "permission": "administrators",
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "poll": {
+            "type": "boolean"
+          },
+          "routing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "resultSchema": {
+        "type": "object"
+      },
+      "flow": {
+        "type": "invoke",
+        "method": "mail.cloudflare.remove"
+      }
+    },
+    "executor.control": {
+      "summary": "Manage executor control",
+      "ai": "hidden",
+      "cli": [
+        "executor",
+        "control"
+      ],
+      "effect": "destructive",
+      "permission": "administrators",
+      "paramsSchema": {},
+      "resultSchema": {},
+      "flow": {
+        "type": "invoke",
+        "method": "executor.control"
+      }
+    },
+    "executor.status": {
+      "summary": "Read executor status",
+      "ai": "hidden",
+      "cli": [
+        "executor",
+        "status"
+      ],
+      "effect": "read",
+      "permission": "administrators",
+      "paramsSchema": {},
+      "resultSchema": {},
+      "flow": {
+        "type": "invoke",
+        "method": "executor.status"
+      }
+    }
+  }
+}
