@@ -89,6 +89,44 @@ func (c *Client) DisableRouting(ctx context.Context, zoneID string) error {
 	return err
 }
 
+// UnlockSubdomainRouting lifts Email Routing's lock on one subdomain's
+// receiving records (PATCH /zones/{zone}/email/routing/dns {"name": sub},
+// Cloudflare's documented "Unlock MX Records previously locked by Email
+// Routing"). With a subdomain name it unlocks only that subdomain's MX: live
+// (2026-11-25) the three route1–3 MX of the named subdomain lost
+// meta.email_routing/read_only while the apex's and every other subdomain's
+// stayed locked and the zone stayed "ready". The zone apex is refused here,
+// and a reply naming anything other than the subdomain is ErrProtocol, so a
+// caller never deletes on the strength of an unlock that went elsewhere.
+func (c *Client) UnlockSubdomainRouting(ctx context.Context, zoneID, subdomain string) error {
+	zone, err := c.GetZone(ctx, zoneID)
+	if err != nil {
+		return err
+	}
+	target, err := domainName(subdomain)
+	if err != nil || !inZone(target, zone.Name) || target == zone.Name {
+		return invalid("routing subdomain")
+	}
+	p, _ := routingPath(zoneID, "dns")
+	var result RoutingDomain
+	if _, err := c.request(ctx, http.MethodPatch, p, nil, map[string]string{"name": target}, &result, PermissionSettingsWrite); err != nil {
+		return err
+	}
+	if !strings.EqualFold(strings.TrimSuffix(result.Name, "."), target) {
+		return &Error{Kind: ErrProtocol, Operation: unlockScope}
+	}
+	return nil
+}
+
+const unlockScope = "routing unlock scope"
+
+// UnlockOutOfScope reports an unlock whose reply named something other than
+// the subdomain asked for.
+func UnlockOutOfScope(err error) bool {
+	e := asError(err)
+	return e != nil && e.Kind == ErrProtocol && e.Operation == unlockScope
+}
+
 // EnableRouting never replaces existing mail DNS or changes the catch-all.
 // subdomain == "" enables the zone; otherwise it enables only that subdomain.
 // Disabling (DisableRouting) is only for removing a setup that enabled it.

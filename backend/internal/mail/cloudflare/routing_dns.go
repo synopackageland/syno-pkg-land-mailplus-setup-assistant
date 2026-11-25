@@ -14,7 +14,8 @@ import (
 // routing for one subdomain: DELETE /zones/{zone}/email/routing/dns takes no
 // name and disables the whole zone. So the setup records, by ID, the records
 // that appeared at the name when it enabled routing there, and removal
-// deletes exactly those through the DNS records API.
+// deletes exactly those through the DNS records API, after
+// UnlockSubdomainRouting when Email Routing's lock refuses an MX.
 
 // MailRecordsAt lists the MX and SPF TXT records at name (read-only, every
 // owner).
@@ -50,8 +51,8 @@ func SameRecord(a, b DNSRecord) bool {
 // ID, only while it still has the recorded shape. A record already gone, or
 // one somebody changed since (theirs now), is left: deleted reports whether
 // a delete was sent. Cloudflare's lock on Email Routing's records is not
-// lifted here: a refusal (code 1046, "managed by Email Routing") is
-// returned as ErrManagedDNS.
+// lifted here (the caller unlocks the subdomain and calls again): a refusal
+// (code 1046, "managed by Email Routing") is returned as ErrManagedDNS.
 func (c *Client) DeleteRecordedDNS(ctx context.Context, zoneID string, want DNSRecord) (deleted bool, err error) {
 	if !identifier.MatchString(want.ID) {
 		return false, invalid("DNS record ID")

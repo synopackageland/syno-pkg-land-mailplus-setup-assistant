@@ -412,3 +412,25 @@ func TestSendingRollbackRemovesOnlyTheDMARCItAdded(t *testing.T) {
 		}
 	})
 }
+
+// The unlock names the subdomain, never the apex, and trusts only a reply
+// naming that subdomain.
+func TestUnlockSubdomainRoutingIsScopedToTheSubdomain(t *testing.T) {
+	ctx := context.Background()
+	unlock := func(reply string) exchange {
+		return exchange{method: "PATCH", path: "/zones/zone/email/routing/dns", result: RoutingDomain{Name: reply, Enabled: true},
+			check: bodyIs(map[string]string{"name": "mail.example.test"})}
+	}
+	if err := fixture(t, get("/zones/zone", testZone()), unlock("mail.example.test")).UnlockSubdomainRouting(ctx, "zone", "Mail.Example.Test."); err != nil {
+		t.Fatal(err)
+	}
+	err := fixture(t, get("/zones/zone", testZone()), unlock("example.test")).UnlockSubdomainRouting(ctx, "zone", "mail.example.test")
+	if !UnlockOutOfScope(err) {
+		t.Fatalf("a reply naming the apex: %v", err)
+	}
+	for _, name := range []string{"example.test", "mail.other.test", ""} {
+		if err := fixture(t, get("/zones/zone", testZone())).UnlockSubdomainRouting(ctx, "zone", name); !IsKind(err, ErrInvalid) {
+			t.Fatalf("%q: %v", name, err)
+		}
+	}
+}
