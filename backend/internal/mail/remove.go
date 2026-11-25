@@ -51,7 +51,8 @@ type RemoveRun struct {
 	Profile string `json:"profile,omitempty"`
 	At      int64  `json:"at,omitempty"`
 	// Locked (done): receiving records Cloudflare would not delete because
-	// Email Routing manages them (1046); they were left in place. AccountID
+	// Email Routing manages them (1046), even after the run asked it to
+	// unlock the subdomain's records; they were left in place. AccountID
 	// and Zone (the zone's name, when read) build the dashboard link where
 	// the administrator can deal with them.
 	Locked    []LockedRecord `json:"locked,omitempty"`

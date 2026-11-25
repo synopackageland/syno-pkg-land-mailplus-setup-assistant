@@ -2,6 +2,7 @@ package mail
 
 import (
 	"context"
+	"errors"
 
 	"SynoMailPlusSetupAssistant/internal/core"
 	"SynoMailPlusSetupAssistant/internal/mail/cloudflare"
@@ -40,7 +41,7 @@ func ledgerKey(domain string) string { return "routingdns." + domain }
 
 // lockedLeft is what a removal of the receiving DNS had to leave: records
 // Cloudflare refuses to delete or change because Email Routing manages them
-// (code 1046; on a subdomain they cannot be unlocked), and the zone's
+// (code 1046) even after the run unlocked the subdomain, and the zone's
 // name for the dashboard link (empty when it could not be read).
 type lockedLeft struct {
 	Records []cloudflare.DNSRecord
@@ -119,11 +120,15 @@ func enableSubdomainRouting(ctx context.Context, env core.Env, client *cloudflar
 
 // removeRoutingDNS undoes the ledger of rec's domain: created MX first, then
 // created SPF, then the changed records restored. Each done record leaves
-// the ledger at once, so a stopped removal goes on where it stopped. A record
-// Cloudflare refuses because Email Routing manages it (1046) is left in place
-// and returned, not a stop (owner decision): no API removes a
-// subdomain's routing MX, and turning routing off in the dashboard is the
-// administrator's call.
+// the ledger at once, so a stopped removal goes on where it stopped. When
+// Cloudflare refuses a record because Email Routing manages it (1046), the
+// run unlocks that subdomain's records once (UnlockSubdomainRouting, scoped
+// to the subdomain's name) and tries the record again. A record still
+// refused, or every locked record when Cloudflare refuses the unlock itself
+// (403 or another API refusal), is left in place and returned, not a stop
+// (owner decision, build 48): turning routing off in the dashboard is the
+// administrator's call. An unlock whose reply names anything other than the
+// subdomain stops the run before any locked record is deleted.
 func (s *InboundSync) removeRoutingDNS(ctx context.Context, env core.Env, rec keptRecord, token string) (lockedLeft, error) {
 	var left lockedLeft
 	led, found, err := loadLedger(ctx, env, rec.Domain)
@@ -147,6 +152,44 @@ func (s *InboundSync) removeRoutingDNS(ctx context.Context, env core.Env, rec ke
 		return nil
 	}
 	locked := func(err error) bool { return cloudflare.IsKind(err, cloudflare.ErrManagedDNS) }
+	// unlock lifts the subdomain's lock at most once per run; unlocked
+	// reports whether a locked record is worth trying again.
+	tried, unlocked := false, false
+	unlock := func() error {
+		if tried {
+			return nil
+		}
+		tried = true
+		err := client.UnlockSubdomainRouting(ctx, rec.ZoneID, rec.Domain)
+		switch {
+		case err == nil:
+			unlocked = true
+			return nil
+		case cloudflare.UnlockOutOfScope(err):
+			return setup.ErrUnsafeRecord
+		case cloudflare.HTTPStatus(err) == 401:
+			return setup.ErrTokenInvalid
+		case cloudflare.HTTPStatus(err) >= 400 && cloudflare.HTTPStatus(err) < 500 && cloudflare.HTTPStatus(err) != 429:
+			// Refused: the locked records stay, as they did before the unlock.
+			return nil
+		}
+		return undoError(err, setup.PermZoneSettingsEdit)
+	}
+	// retry runs one record's call, unlocking and trying once more when
+	// Email Routing's lock refuses it.
+	retry := func(call func() error) error {
+		err := call()
+		if !locked(err) {
+			return err
+		}
+		if uerr := unlock(); uerr != nil {
+			return uerr
+		}
+		if !unlocked {
+			return err
+		}
+		return call()
+	}
 	for _, kind := range []string{"MX", "TXT"} {
 		kept := []cloudflare.DNSRecord{}
 		for i, c := range led.Created {
@@ -154,14 +197,14 @@ func (s *InboundSync) removeRoutingDNS(ctx context.Context, env core.Env, rec ke
 				kept = append(kept, c)
 				continue
 			}
-			if _, err := client.DeleteRecordedDNS(ctx, rec.ZoneID, c); err != nil {
+			if err := retry(func() error { _, err := client.DeleteRecordedDNS(ctx, rec.ZoneID, c); return err }); err != nil {
 				if locked(err) {
 					left.Records = append(left.Records, c)
 					continue
 				}
 				led.Created = append(kept, led.Created[i:]...)
 				_ = save()
-				return left, undoError(err, setup.PermDNSEdit)
+				return left, removeDNSError(err)
 			}
 		}
 		led.Created = kept
@@ -171,9 +214,9 @@ func (s *InboundSync) removeRoutingDNS(ctx context.Context, env core.Env, rec ke
 	}
 	for len(led.Changed) > 0 {
 		c := led.Changed[0]
-		if _, err := client.RestoreRecordedDNS(ctx, rec.ZoneID, c.Before, c.After); err != nil {
+		if err := retry(func() error { _, err := client.RestoreRecordedDNS(ctx, rec.ZoneID, c.Before, c.After); return err }); err != nil {
 			if !locked(err) {
-				return left, undoError(err, setup.PermDNSEdit)
+				return left, removeDNSError(err)
 			}
 			left.Records = append(left.Records, c.After)
 		}
@@ -192,4 +235,14 @@ func (s *InboundSync) removeRoutingDNS(ctx context.Context, env core.Env, rec ke
 		}
 	}
 	return left, nil
+}
+
+// removeDNSError maps a stopped record call; the unlock's own outcomes
+// (already setup errors) pass through.
+func removeDNSError(err error) error {
+	var refused setup.PermissionRefused
+	if errors.Is(err, setup.ErrUnsafeRecord) || errors.Is(err, setup.ErrTokenInvalid) || errors.Is(err, setup.ErrUnavailable) || errors.As(err, &refused) {
+		return err
+	}
+	return undoError(err, setup.PermDNSEdit)
 }

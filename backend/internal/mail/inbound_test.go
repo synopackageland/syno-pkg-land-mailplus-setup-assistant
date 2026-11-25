@@ -56,10 +56,14 @@ type inboundCloud struct {
 	// requests is every method and path asked, in order.
 	requests []string
 	// lockedDNS refuses deleting Email Routing's records (code 1046).
-	lockedDNS  bool
-	dnsDeletes []string
-	dnsPuts    []string
-	nextID     int
+	lockedDNS bool
+	// unlocks is every name PATCH /email/routing/dns was asked to unlock;
+	// unlockReply, when set, is the name its reply gives instead.
+	unlocks     []string
+	unlockReply string
+	dnsDeletes  []string
+	dnsPuts     []string
+	nextID      int
 }
 
 func (f *inboundCloud) hasRoutingMX(name string) bool {
@@ -164,6 +168,21 @@ func (f *inboundCloud) Do(req *http.Request) (*http.Response, error) {
 			f.records[i].DNSFields = fields
 			result = f.records[i]
 		}
+	case p == zone+"/email/routing/dns" && req.Method == "PATCH":
+		// Unlock (live 2026-11-25): with a subdomain's name only that
+		// name's routing MX lose their lock.
+		name, _ := body["name"].(string)
+		f.unlocks = append(f.unlocks, name)
+		for i := range f.records {
+			if f.records[i].Name == name && f.records[i].Type == "MX" {
+				f.records[i].Meta.EmailRouting, f.records[i].Meta.ReadOnly = false, false
+			}
+		}
+		reply := name
+		if f.unlockReply != "" {
+			reply = f.unlockReply
+		}
+		result = cloudflare.RoutingDomain{Name: reply, Enabled: true, Status: "unlocked"}
 	case p == zone+"/email/routing/dns" && req.Method == "DELETE":
 		f.disables++
 		f.routing.Enabled = false

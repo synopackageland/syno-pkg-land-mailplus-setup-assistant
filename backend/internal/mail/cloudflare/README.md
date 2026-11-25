@@ -28,7 +28,7 @@ the original request before deciding what to do.
 | DNS | `ListDNSRecords`, `ListOwnedDNSRecords`, `CreateDNSRecord`, `UpdateDNSRecord`, `DeleteDNSRecord` | Diagnostic reads; owned mail DNS mutations only |
 | DNS rollback | `SnapshotDNS`, `RestoreDNS` | Owner-scoped full-set snapshot; recreate, restore and remove additions |
 | Sending | `ListSendingDomains`, `GetSendingDomain`, `PreviewSendingDomain`, `OnboardSendingDomain`, `SendingDNS`, `SendingDNSStatus`, `PollSendingVerification`, `RollbackSendingDomain` | New sender onboarding with DNS preview and a private creation receipt |
-| Routing | `RoutingStatus`, `RoutingDNS`, `EnableRouting`, `ListRoutingRules`, `OwnedRoutingRules`, `CreateRoutingRule`, `DeleteRoutingRule`, `CatchAll` | Zone/subdomain enable (body field `name`); exact addresses to this owner's Worker; catch-all reads only |
+| Routing | `RoutingStatus`, `RoutingDNS`, `EnableRouting`, `UnlockSubdomainRouting`, `ListRoutingRules`, `OwnedRoutingRules`, `CreateRoutingRule`, `DeleteRoutingRule`, `CatchAll` | Zone/subdomain enable (body field `name`); unlock of one subdomain's routing MX (never the apex) for a removal; exact addresses to this owner's Worker; catch-all reads only |
 | Worker | `WorkerName`, `UploadWorker`, `FindWorker`, `DeleteWorker`, `ListWorkers`, `InboundWorkerSource` | Embedded module upload with ownership tags, one `vpc_service` binding and a JSON config |
 | VPC | `VPCServiceName`, `ListVPCServices`, `GetVPCService`, `FindVPCService`, `CreateVPCService`, `DeleteVPCService`, `PrivateIPv4` | Owned SMTP TCP 25 service on a private NAS IPv4 through a healthy tunnel |
 | Tunnel | `ListTunnels`, `TunnelConnectors`, `ConnectPrefix` | Read-only discovery (not deleted; connections' origin IPs); no tunnel configuration or credentials |
@@ -69,7 +69,11 @@ call bypasses them.
 | Email Routing enable | `EnableRouting` | none possible (a zone setting); never disabled by rollback |
 
 Cloudflare's own locked records (Email Routing MX/SPF, Sending `cf-bounce`)
-cannot be tagged and are never edited.
+cannot be tagged and are never edited. The one exception is a removal deleting
+the routing MX its own setup created on a subdomain (by recorded ID): it first
+unlocks that subdomain with `UnlockSubdomainRouting`
+(`PATCH /email/routing/dns {"name": <subdomain>}`), which live unlocked only
+that subdomain's MX, and trusts only a reply naming that subdomain.
 
 Ordinary DNS records use the exact comment `syno-home-keeper:<OwnerID>`.
 Update/delete re-read that comment and refuse read-only or Email Routing-managed
