@@ -130,11 +130,72 @@ func TestRemoveLeavesARecordChangedSinceAndRestoresAMergedOne(t *testing.T) {
 	}
 }
 
-// Cloudflare refuses (1046) to delete the routing MX
-// it added to a subdomain. The removal leaves them, deletes the SPF and
-// everything else, clears the ledger, finishes, and lists the MX it left
-// with what the dashboard link needs (the account and the zone's name).
-func TestRemoveLeavesLockedRecordsAndSaysWhich(t *testing.T) {
+// Cloudflare refuses (1046) to delete the routing MX it added to a
+// subdomain. The removal unlocks that subdomain's records (PATCH
+// email/routing/dns with the subdomain's name, once) and deletes them: no
+// locked MX is left, the apex's locked records and every record the setup
+// did not create stay, and Email Routing on the zone stays on.
+func TestRemoveUnlocksTheSubdomainAndDeletesItsLockedMX(t *testing.T) {
+	ctx := context.Background()
+	cloud := newInboundCloud()
+	preexisting(cloud)
+	for i := range cloud.records {
+		if cloud.records[i].ID == "apex-mx" {
+			cloud.records[i].Meta.EmailRouting, cloud.records[i].Meta.ReadOnly = true, true
+		}
+	}
+	r := removableAt(t, cloud, sub, setup.ReceiveAddresses, "admin@"+sub)
+	led, _, _ := loadLedger(ctx, r.env, sub)
+	if len(led.Created) != 4 {
+		t.Fatalf("ledger: %+v", led)
+	}
+	created := mailRecordIDs(cloud, sub)
+	cloud.lockedDNS = true
+	view, err := r.s.Remove(ctx, r.env, r.id, false, false)
+	if err != nil || view.Removal == nil || view.Removal.State != "done" || view.Removal.Done != view.Removal.Total {
+		t.Fatalf("removal: %+v %v", view.Removal, err)
+	}
+	if len(view.Removal.Locked) != 0 || view.Removal.AccountID != "" || view.Removal.Zone != "" {
+		t.Fatalf("nothing should be left locked: %+v", view.Removal)
+	}
+	if strings.Join(cloud.unlocks, ",") != sub {
+		t.Fatalf("unlocks: %v", cloud.unlocks)
+	}
+	if got := mailRecordIDs(cloud, sub); len(got) != 0 {
+		t.Fatalf("left at the subdomain: %v", got)
+	}
+	deleted := append([]string{}, cloud.dnsDeletes...)
+	sort.Strings(deleted)
+	if strings.Join(deleted, ",") != strings.Join(created, ",") {
+		t.Fatalf("deleted %v, created %v", deleted, created)
+	}
+	for _, id := range []string{"pre-dmarc", "apex-mx", "apex-spf"} {
+		found := false
+		for _, rec := range cloud.records {
+			if rec.ID == id {
+				found = true
+				if id == "apex-mx" && !rec.Meta.EmailRouting {
+					t.Fatal("the apex MX was unlocked")
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("%s was touched", id)
+		}
+	}
+	if cloud.disables != 0 {
+		t.Fatal("zone routing disabled")
+	}
+	if _, found, _ := loadLedger(ctx, r.env, sub); found {
+		t.Fatal("ledger left")
+	}
+}
+
+// When Cloudflare refuses the unlock itself, the removal leaves the locked
+// MX, deletes the SPF and everything else, clears the ledger, finishes, and
+// lists the MX it left with what the dashboard link needs (the account and
+// the zone's name).
+func TestRemoveLeavesLockedRecordsWhenTheUnlockIsRefused(t *testing.T) {
 	ctx := context.Background()
 	cloud := newInboundCloud()
 	preexisting(cloud)
@@ -144,9 +205,20 @@ func TestRemoveLeavesLockedRecordsAndSaysWhich(t *testing.T) {
 		t.Fatalf("ledger: %+v", led)
 	}
 	cloud.lockedDNS = true
+	unlock := "PATCH /zones/" + testZone + "/email/routing/dns"
+	cloud.fail = map[string][2]int{unlock: {403, 10000}}
 	view, err := r.s.Remove(ctx, r.env, r.id, false, false)
 	if err != nil || view.Removal == nil || view.Removal.State != "done" || view.Removal.CauseKey != "" || view.Removal.Done != view.Removal.Total {
 		t.Fatalf("locked MX must not stop the removal: %+v %v", view.Removal, err)
+	}
+	asked := 0
+	for _, q := range cloud.requests {
+		if q == unlock {
+			asked++
+		}
+	}
+	if asked != 1 {
+		t.Fatalf("unlock asked %d times", asked)
 	}
 	got := []string{}
 	for _, l := range view.Removal.Locked {
@@ -181,6 +253,32 @@ func TestRemoveLeavesLockedRecordsAndSaysWhich(t *testing.T) {
 	}
 	if rec := r.record(t); rec.ID != "" || rec.TokenRef != "" {
 		t.Fatalf("record left: %+v", rec)
+	}
+}
+
+// An unlock whose reply names another domain (the zone apex) is not trusted:
+// the removal stops before deleting any locked record and keeps them in the
+// ledger; pressing again after a good unlock finishes.
+func TestRemoveStopsWhenTheUnlockNamesAnotherDomain(t *testing.T) {
+	ctx := context.Background()
+	cloud := newInboundCloud()
+	r := removableAt(t, cloud, sub, setup.ReceiveAddresses, "admin@"+sub)
+	cloud.lockedDNS = true
+	cloud.unlockReply = "example.test"
+	view, err := r.s.Remove(ctx, r.env, r.id, false, false)
+	if err != nil || view.Removal.State != "failed" {
+		t.Fatalf("an unlock elsewhere must stop: %+v %v", view.Removal, err)
+	}
+	if len(cloud.dnsDeletes) != 0 || len(mailRecordIDs(cloud, sub)) != 4 {
+		t.Fatalf("deleted %v", cloud.dnsDeletes)
+	}
+	if led, found, _ := loadLedger(ctx, r.env, sub); !found || len(led.Created) != 4 {
+		t.Fatalf("ledger: %+v %v", led, found)
+	}
+	cloud.unlockReply = ""
+	view, err = r.s.Remove(ctx, r.env, r.id, false, false)
+	if err != nil || view.Removal.State != "done" || len(mailRecordIDs(cloud, sub)) != 0 || len(view.Removal.Locked) != 0 {
+		t.Fatalf("again: %+v %v %v", view.Removal, err, mailRecordIDs(cloud, sub))
 	}
 }
 

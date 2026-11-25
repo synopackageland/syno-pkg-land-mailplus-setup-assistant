@@ -520,8 +520,7 @@ written. A resource already gone counts as done.
   `meta.email_routing`) and the SPF TXT `v=spf1 include:_spf.mx.cloudflare.net ~all`
   at that name. Cloudflare documents no per-subdomain
   "disable": `DELETE …/email/routing/dns` takes no name and turns Email
-  Routing off for the whole zone, and its unlock (`PATCH … {name}`) is
-  documented for the zone apex only. So the App keeps a **ledger**
+  Routing off for the whole zone. So the App keeps a **ledger**
   (`mail.wiring` KV, `routingdns.<domain>`): before enabling it lists the MX
   and SPF records at the name, after enabling it lists them again, and records
   the IDs that appeared (created) and the pre-existing ones whose content
@@ -536,10 +535,23 @@ written. A resource already gone counts as done.
   `DELETE dns_records/{id}` on each of a subdomain's route1–3 MX returned
   HTTP 400 `{"code":1046,"message":"This record is managed by Email Routing.
   Disable Email Routing to modify/remove this record."}`, while the SPF TXT
-  (no `meta.email_routing`) was deleted (200). Cloudflare's docs say only the
-  apex's routing records can be unlocked and give no way to remove one
-  subdomain's. So (owner decision, build 48) a record refused with 1046 is
-  left in place, not a stop: the SPF and everything else are removed, the
+  (no `meta.email_routing`) was deleted (200). **Unlock (after build 55).** On
+  such a refusal the run calls, once, Cloudflare's documented "Unlock MX
+  Records previously locked by Email Routing",
+  `PATCH /zones/{zone}/email/routing/dns {"name": <subdomain>}` (Zone
+  Settings Write, which the token already has for the enable), and tries the
+  record again. Verified live (2026-11-25): with a subdomain's name it
+  unlocked only that subdomain's three MX (`meta.email_routing` and
+  `read_only` cleared); the apex's and every other subdomain's routing MX
+  stayed locked, the zone stayed `ready`, and the three MX were then deleted
+  (200). The subdomain's status became `unconfigured`; it stays in Email
+  Routing's subdomain list (Cloudflare documents no call that removes one
+  subdomain), which the next setup handles as below. The App never sends the
+  apex's name, and stops (nothing deleted, the ledger kept) when the reply
+  names anything other than the subdomain. When Cloudflare refuses the unlock
+  itself (a 4xx), or a record is still refused after it, the record is left
+  in place, not a stop (owner decision, build 48): the SPF and everything
+  else are removed, the
   ledger is cleared and the removal is done; the result (`RemoveRun.locked`,
   with `accountId` and the zone's `zone` name read once for it) lists the
   records left, and the page says so plainly and links to Cloudflare's Email
