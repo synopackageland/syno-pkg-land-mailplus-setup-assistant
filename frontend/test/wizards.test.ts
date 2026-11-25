@@ -2559,6 +2559,32 @@ const routingWarnings=['mail.setup.globalDelivery','mail.setup.inbound.direct','
 const routingBranch=(mailboxes:string[])=>({kind:'configure',titleKey:'mail.setup.configuration',needsAccount:false,fields:[],warnings:routingWarnings,paths:routingPaths,mailboxes})
 const shownStep=()=>dialog().querySelector<HTMLElement>('section:not([aria-hidden="true"])[data-wizard-step="configuration"]')!
 
+test('setup: a missing receive tunnel offers the Connect catalog and keeps manual setup folded',async()=>{
+ const h=harness({'mail.setup.start':flow(),
+  'mail.setup.detect':{done:true,facts:[],branch:routingBranch(['alice@example.com'])},
+  'mail.setup.preview':refusal('unavailable',{reason:'mail.setup.tunnelRequired'})})
+ const open=vi.spyOn(window,'open').mockReturnValue(null)
+ try{
+  await toConfiguration(h)
+  await press('Next')
+  const step=shownStep()
+  const callout=step.querySelector('[data-tunnel-help]')!
+  expect(callout.textContent).toContain('mail.setup.tunnelRequiredBody')
+  expect([...callout.querySelectorAll('[data-tunnel-steps] li')].map(item=>item.textContent)).toEqual([
+   'mail.setup.tunnelStepInstall','mail.setup.tunnelStepConnect','mail.setup.tunnelStepPreview',
+  ])
+  expect(callout.textContent).toContain('mail.setup.tunnelPublicDSM')
+  expect(callout.textContent).toContain('mail.setup.tunnelSendOnly')
+  const advanced=step.querySelector('[data-tunnel-advanced]')!
+  expect(advanced.textContent).not.toContain('mail.setup.tunnelAdvancedBody')
+  await press('mail.setup.tunnelOpenConnect',callout)
+  expect(open).toHaveBeenCalledWith('https://synopkgland.com/apps/SynoPkgConnect/','_blank','noopener,noreferrer')
+  await press('mail.setup.tunnelAdvanced',advanced)
+  expect(advanced.textContent).toContain('mail.setup.tunnelAdvancedBody')
+  expect(h.methods()).not.toContain('mail.setup.apply')
+ }finally{open.mockRestore();h.close()}
+})
+
 test('setup: the configuration step asks for no address; it says the consequences and folds the rest',async()=>{
  const h=harness({'mail.setup.start':flow(),'mail.setup.detect':{done:true,facts:[],branch:routingBranch(['alice@example.com','bob@example.com'])},
   'mail.setup.preview':{changes:[change],permissions:[],warnings:[]}})

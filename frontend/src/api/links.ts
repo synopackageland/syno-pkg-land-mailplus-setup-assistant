@@ -22,3 +22,5 @@ export function smtpTestUrl(ip?: string): string {
  * owner on 2026-11-12; the copy says Cloudflare's own page decides.
  */
 export const CLOUDFLARE_PRICING_URL = 'https://developers.cloudflare.com/email-service/platform/pricing/'
+
+export const SYNO_CONNECT_CATALOG_URL = 'https://synopkgland.com/apps/SynoPkgConnect/'
