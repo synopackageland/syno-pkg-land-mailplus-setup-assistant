@@ -112,6 +112,10 @@ type RelayState struct {
 	Enabled     *bool     `json:"enabled,omitempty"`
 	Running     *bool     `json:"running,omitempty"`
 	LastSuccess time.Time `json:"lastSuccess,omitempty"`
+	// PlanRefusal is when Cloudflare last refused a recipient because the
+	// account is on Workers Free, which sends only to its verified
+	// destination addresses (in memory: zero after a relay restart).
+	PlanRefusal time.Time `json:"planRefusal,omitempty"`
 }
 
 type MailCertificate struct {
@@ -589,21 +593,32 @@ func checkRelayService(s State, now time.Time) []core.Finding {
 	if r.Running == nil {
 		return []core.Finding{finding(Relay, "unavailable", "running", core.SeverityInfo, "", nil)}
 	}
+	out := []core.Finding{}
+	// A refused message goes back to its sender, so the queue says nothing:
+	// a Workers Free refusal in the last day is named on its own.
+	if !r.PlanRefusal.IsZero() && !r.PlanRefusal.After(now) && now.Sub(r.PlanRefusal) < planRefusalWindow {
+		out = append(out, finding(Relay, "recipient_plan", "", core.SeverityWarning, "send",
+			map[string]any{"refusedAgeSeconds": int64(now.Sub(r.PlanRefusal).Seconds())}))
+	}
 	if s.Queue.Total == nil || *s.Queue.Total < 0 {
-		return []core.Finding{finding(Relay, "unavailable", "queue", core.SeverityInfo, "", nil)}
+		return append(out, finding(Relay, "unavailable", "queue", core.SeverityInfo, "", nil))
 	}
 	if *s.Queue.Total == 0 {
-		return nil // idle does not mean broken
+		return out // idle does not mean broken
 	}
 	if r.LastSuccess.IsZero() || r.LastSuccess.After(now) {
-		return []core.Finding{finding(Relay, "relay_history", "", core.SeverityInfo, "", nil)}
+		return append(out, finding(Relay, "relay_history", "", core.SeverityInfo, "", nil))
 	}
 	if now.Sub(r.LastSuccess) >= time.Hour {
-		return []core.Finding{finding(Relay, "relay_stale", "", core.SeverityWarning, "send",
-			map[string]any{"lastSuccessAgeSeconds": int64(now.Sub(r.LastSuccess).Seconds()), "queueCount": *s.Queue.Total})}
+		return append(out, finding(Relay, "relay_stale", "", core.SeverityWarning, "send",
+			map[string]any{"lastSuccessAgeSeconds": int64(now.Sub(r.LastSuccess).Seconds()), "queueCount": *s.Queue.Total}))
 	}
-	return nil
+	return out
 }
+
+// planRefusalWindow is how long a Workers Free recipient refusal stays a
+// finding. After an upgrade to Workers Paid it fades on its own.
+const planRefusalWindow = 24 * time.Hour
 
 func checkDomains(c *checker, s State) []core.Finding {
 	if c.r == nil || len(s.Domains) == 0 {

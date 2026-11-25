@@ -40,6 +40,9 @@ func (s relayStateSource) Snapshot(ctx context.Context, env core.Env) (State, er
 	if s.status != nil {
 		status := s.status.Status()
 		state.Relay.Running = &status.Running
+		if raw := status.Info["lastPlanRefusal"]; raw != "" {
+			state.Relay.PlanRefusal, _ = time.Parse(time.RFC3339Nano, raw)
+		}
 		// In-memory success wins over stale persistent state after a write
 		// failure following an already committed upstream delivery.
 		if raw := status.Info["lastSuccess"]; raw != "" {

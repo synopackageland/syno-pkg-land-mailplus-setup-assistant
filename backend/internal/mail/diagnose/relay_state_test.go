@@ -79,3 +79,27 @@ func TestRelayStateSource(t *testing.T) {
 		t.Fatal("detector error discarded")
 	}
 }
+
+// The relay's in-memory time of the last Workers Free recipient refusal is
+// passed on; a missing or corrupt value is none.
+func TestRelayStatePlanRefusal(t *testing.T) {
+	for _, tt := range []struct {
+		name, value string
+		want        time.Time
+	}{
+		{"recorded", testNow.Format(time.RFC3339Nano), testNow},
+		{"absent", "", time.Time{}},
+		{"corrupt", "invalid", time.Time{}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			base := &fakeState{value: healthy()}
+			base.value.Relay.Enabled = ptr(true)
+			source := WithRelay(base, fakeRelayStatus{core.ServiceStatus{Running: true,
+				Info: map[string]string{"lastSuccess": testNow.Format(time.RFC3339Nano), "lastPlanRefusal": tt.value}}})
+			state, err := source.Snapshot(context.Background(), core.Env{})
+			if err != nil || !state.Relay.PlanRefusal.Equal(tt.want) {
+				t.Fatalf("%v %v", state.Relay.PlanRefusal, err)
+			}
+		})
+	}
+}

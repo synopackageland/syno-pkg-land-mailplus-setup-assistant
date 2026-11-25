@@ -226,6 +226,22 @@ func TestRelayChecks(t *testing.T) {
 			s.Relay = RelayState{Enabled: ptr(true), Running: ptr(true), LastSuccess: testNow.Add(time.Hour)}
 		}, []string{"relay_history"}},
 		{"queue unknown", func(s *State) { s.Queue.Total = nil; s.Relay = RelayState{Enabled: ptr(true), Running: ptr(true)} }, []string{"unavailable"}},
+		// Workers Free refused a recipient in the last day: named even with an
+		// empty queue (the message went back to its sender) and after a later
+		// success to a verified address.
+		{"plan refusal", func(s *State) {
+			s.Relay = RelayState{Enabled: ptr(true), Running: ptr(true), LastSuccess: testNow.Add(-time.Minute), PlanRefusal: testNow.Add(-time.Hour)}
+		}, []string{"recipient_plan"}},
+		{"plan refusal with stale queue", func(s *State) {
+			s.Queue.Total = ptr(1)
+			s.Relay = RelayState{Enabled: ptr(true), Running: ptr(true), LastSuccess: testNow.Add(-2 * time.Hour), PlanRefusal: testNow.Add(-time.Hour)}
+		}, []string{"recipient_plan", "relay_stale"}},
+		{"old plan refusal", func(s *State) {
+			s.Relay = RelayState{Enabled: ptr(true), Running: ptr(true), PlanRefusal: testNow.Add(-25 * time.Hour)}
+		}, nil},
+		{"future plan refusal", func(s *State) {
+			s.Relay = RelayState{Enabled: ptr(true), Running: ptr(true), PlanRefusal: testNow.Add(time.Hour)}
+		}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) { s := healthy(); tt.change(&s); assertCauses(t, checkRelay(s, testNow), tt.want...) })
@@ -624,7 +640,7 @@ func TestDiagnosticLocales(t *testing.T) {
 			}
 		}
 	}
-	allCauses := []string{"unavailable", "bounded", "missing", "stopped", "smtp", "queue", "queue_stale", "queue_age", "deferred_dns", "deferred_auth", "deferred_tls", "deferred_policy", "deferred_remote", "relay_stopped", "relay_stale", "relay_history", "mx", "spf", "dkim", "dmarc", "mtasts", "tlsrpt", "egress", "ptr", "dnsbl", "dnsbl_unknown", "outbound", "inbound", "inbound_unknown", "client", "client_unknown", "imap", "cert_soon", "cert_expired"}
+	allCauses := []string{"unavailable", "bounded", "missing", "stopped", "smtp", "queue", "queue_stale", "queue_age", "deferred_dns", "deferred_auth", "deferred_tls", "deferred_policy", "deferred_remote", "relay_stopped", "relay_stale", "relay_history", "recipient_plan", "mx", "spf", "dkim", "dmarc", "mtasts", "tlsrpt", "egress", "ptr", "dnsbl", "dnsbl_unknown", "outbound", "inbound", "inbound_unknown", "client", "client_unknown", "imap", "cert_soon", "cert_expired"}
 	for _, cause := range allCauses {
 		f := finding(MailPlus, cause, "fixture", core.SeverityInfo, "", nil)
 		for _, key := range []string{f.TitleKey, f.WhyKey, f.FixKey} {

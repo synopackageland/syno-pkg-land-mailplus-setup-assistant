@@ -2087,6 +2087,9 @@ test('setup: a Check again that finds no check mail yet says "not arrived yet" a
 for(const [name,extra] of [
  ['a check that really failed (the readback)',{findings:[{...checkMail,titleKey:'mail.setup.inbound.readbackFailed',whyKey:'mail.setup.inbound.readbackFailedBody',params:undefined},unverified]}],
  ['a timed-out verification',{error:'mail.setup.unconfirmed'}],
+ // Workers Free refused the check mail: the setup cannot send to anyone but
+ // verified addresses, so it must never read as a calm wait.
+ ['a Workers Free refusal of the check mail',{findings:[{id:'mail.setup.sendingPlan',module:'mail',check:'mail.setup',severity:'warning',titleKey:'mail.setup.inbound.sendingPlan',whyKey:'mail.setup.inbound.sendingPlanBody'},checkMail,unverified]}],
 ] as const){
  test(`setup: ${name} still shows the failure wording and its findings`,async()=>{
   const h=harness({'mail.setup.start':waiting(extra as Record<string,unknown>)})

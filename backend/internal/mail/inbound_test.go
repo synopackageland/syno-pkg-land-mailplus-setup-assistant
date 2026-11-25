@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -51,6 +52,8 @@ type inboundCloud struct {
 	sent         []map[string]any
 	// onSend is called with the Message-ID of a sent check mail.
 	onSend func(id, subject string)
+	// sendRefusal, when set, is the raw body of an HTTP 403 answer to a send.
+	sendRefusal string
 	// fail answers a method+path with an HTTP status and Cloudflare code.
 	fail map[string][2]int
 	// requests is every method and path asked, in order.
@@ -317,6 +320,9 @@ func (f *inboundCloud) Do(req *http.Request) (*http.Response, error) {
 		result = []any{} // the replacement token's Email Sending read
 	case p == acct+"/email/sending/send" && req.Method == "POST":
 		f.sent = append(f.sent, body)
+		if f.sendRefusal != "" {
+			return &http.Response{StatusCode: 403, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(f.sendRefusal))}, nil
+		}
 		id := "<check-" + strconv.Itoa(len(f.sent)) + "@example.test>"
 		if f.onSend != nil {
 			f.onSend(id, body["subject"].(string))
@@ -1180,5 +1186,58 @@ func TestInboundNeverTouchesTheCatchAll(t *testing.T) {
 	}
 	if err := client.DeleteRoutingRule(ctx, testZone, "catch_all"); !cloudflare.IsKind(err, cloudflare.ErrOwnership) {
 		t.Fatalf("catch-all delete not refused: %v", err)
+	}
+}
+
+// On Workers Free, Email Sending refuses the check mail to the routed
+// address (not a verified destination address) with HTTP 403, code 10208.
+// The verification names the plan, so the setup cannot look done while it
+// cannot send. After an upgrade, Check again sends the check mail again (the
+// refused one was never accepted) and can succeed.
+func TestInboundVerifyNamesTheWorkersFreeRecipientRefusal(t *testing.T) {
+	ctx := context.Background()
+	refusal, err := os.ReadFile("cloudflare/testdata/send-recipient-plan-restricted.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cloud, dsm := newInboundCloud(), lanDSM()
+	cloud.sendRefusal = string(refusal)
+	adapter, env, request := inboundFixture(t, cloud, dsm)
+	request.Intent, request.Decision.Send = setup.Both, setup.RelaySend
+	request.Decision.Needs = []string{"cloudflare.inbound"}
+	cloud.onSend = func(id, subject string) {
+		dsm.log = append(dsm.log, delivered(id, subject, "admin@mail.example.test", "172.23.42.201", 1794306801))
+	}
+	prepared, err := adapter.Plan(ctx, env, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range prepared.Changes {
+		if _, err := adapter.Snapshot(ctx, env, c); err != nil {
+			t.Fatal(err)
+		}
+		if err := adapter.Apply(ctx, env, c); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for i := range cloud.rules {
+		cloud.rules[i].Enabled = true
+	}
+	readback, delivery, findings := adapter.verifyInbound(ctx, env, request, prepared.Changes, time.Minute)
+	if !readback || delivery || len(findings) != 2 || findings[0].TitleKey != "mail.setup.inbound.sendingPlan" ||
+		findings[0].ID == findings[1].ID || findings[0].Severity != core.SeverityWarning || findings[1].TitleKey != "mail.setup.inbound.checkMail" {
+		t.Fatalf("refused check mail: %v %v %+v", readback, delivery, findings)
+	}
+	// Still refused: named again, and no wait for a mail that was never sent.
+	if _, _, findings = adapter.verifyInbound(ctx, env, request, prepared.Changes, time.Minute); findings[0].TitleKey != "mail.setup.inbound.sendingPlan" || len(cloud.sent) != 2 {
+		t.Fatalf("second refusal: %+v sent=%d", findings, len(cloud.sent))
+	}
+	cloud.sendRefusal = "" // the account moved to Workers Paid
+	if _, delivery, findings = adapter.verifyInbound(ctx, env, request, prepared.Changes, 0); !delivery || len(findings) != 1 || findings[0].TitleKey != "mail.setup.inbound.delivered" || len(cloud.sent) != 3 {
+		t.Fatalf("after upgrade: %v %+v sent=%d", delivery, findings, len(cloud.sent))
+	}
+	// Delivered: never sent again.
+	if _, _, _ = adapter.verifyInbound(ctx, env, request, prepared.Changes, 0); len(cloud.sent) != 3 {
+		t.Fatal("check mail sent after it was accepted")
 	}
 }

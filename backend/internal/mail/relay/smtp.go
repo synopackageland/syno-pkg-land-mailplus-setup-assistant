@@ -244,10 +244,19 @@ func (s *server) serve(ctx context.Context, raw net.Conn) {
 					s.service.tokenResult(ctx, s.env, e != nil)
 				}
 			}
+			if RecipientPlanRefused(e) {
+				// Permanent: Workers Free sends only to the account's
+				// verified addresses. Retrying cannot help, so MailPlus
+				// returns the message to its sender now, with the reason.
+				s.service.planRefused(ctx, s.env)
+				say("550 5.7.1 Cloudflare Workers Free sends only to verified addresses; sending to anyone needs Workers Paid")
+				reset()
+				continue
+			}
 			if e != nil {
 				s.service.count("deferred")
 				s.service.lastError(e)
-				// Always temporary: MailPlus keeps the message queued and
+				// Otherwise always temporary: MailPlus keeps the message queued and
 				// retries, also when Cloudflare refused the token (revoked
 				// or rolled), so nothing bounces while a new one is entered.
 				if AuthRefused(e) {
@@ -275,7 +284,7 @@ func (s *server) serve(ctx context.Context, raw net.Conn) {
 			if copyErr == nil {
 				e = up.Commit()
 			} else {
-				e = upstreamError{"stream", 0}
+				e = upstreamError{stage: "stream", code: 0}
 			}
 			up.Close()
 			if e != nil {

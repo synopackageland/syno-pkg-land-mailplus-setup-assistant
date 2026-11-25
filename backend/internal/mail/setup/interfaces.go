@@ -173,8 +173,10 @@ var (
 	// nothing; enabling it would undo an administrator's choice. Refused.
 	ErrRoutingLeftoverDisabled = errors.New("mail.setup.routingLeftoverDisabled")
 	// ErrSendingPlan: Cloudflare answered that the account's plan does not
-	// include Email Sending (it needs Workers Paid). Refused before anything
-	// is written when the sign-in check or the preview hears it.
+	// allow this sending (sending to anyone needs Workers Paid; Workers Free
+	// sends only to the account's verified destination addresses). Refused
+	// before anything is written when the sign-in check or the preview hears
+	// it; a Workers Free refusal of the check mail is a verification finding.
 	ErrSendingPlan = errors.New("mail.setup.sendingPlan")
 	// ErrSendingExisting: the mail domain is already in Email Sending but
 	// disabled or with DNS Cloudflare reports as wrong. A working one is

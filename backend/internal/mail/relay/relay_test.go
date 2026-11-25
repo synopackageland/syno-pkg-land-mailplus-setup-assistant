@@ -114,6 +114,8 @@ type fixture struct {
 	pool *x509.CertPool
 	env  core.Env
 	auth AuthCredentials
+	// failureText replaces the fake's refusal text (after the code).
+	failureText string
 }
 
 func newFixture(t *testing.T) fixture {
@@ -136,7 +138,7 @@ func newFixture(t *testing.T) fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return fixture{cert, pool, env, auth}
+	return fixture{cert: cert, pool: pool, env: env, auth: auth}
 }
 
 // receivedBody waits for the body the fake read, or for the fake to give up.
@@ -191,7 +193,11 @@ func startFake(t *testing.T, f fixture, failureStage string, failureCode int, ho
 				if failureCode == 0 {
 					return false
 				} // lost reply
-				p.PrintfLine("%d peer-private-text", failureCode)
+				text := "peer-private-text"
+				if f.failureText != "" {
+					text = f.failureText
+				}
+				p.PrintfLine("%d %s", failureCode, text)
 				return false
 			}
 			p.PrintfLine("%d fixture", code)
@@ -736,7 +742,55 @@ func TestUpstreamLoginRefusedIsTemporaryAndReported(t *testing.T) {
 			}
 		})
 	}
-	if !AuthRefused(upstreamError{"auth", 535}) || AuthRefused(upstreamError{"auth", 454}) || AuthRefused(upstreamError{"mail", 550}) {
+	if !AuthRefused(upstreamError{stage: "auth", code: 535}) || AuthRefused(upstreamError{stage: "auth", code: 454}) || AuthRefused(upstreamError{stage: "mail", code: 550}) {
 		t.Fatal("AuthRefused")
+	}
+}
+
+// On Workers Free, Cloudflare SMTP accepts only the account's verified
+// destination addresses and refuses any other RCPT TO with 550 5.7.1
+// (Cloudflare's SMTP documentation; not captured live). That refusal is
+// permanent: the relay passes it on as 550 5.7.1 with a plain reason, so
+// MailPlus returns the message to its sender at once instead of retrying for
+// days, and records the fixed plan code. Any other RCPT refusal stays 451.
+func TestRecipientPlanRefusalIsPermanentAndNamed(t *testing.T) {
+	f := newFixture(t)
+	for _, tc := range []struct {
+		name, text string
+		want       int
+		lastErr    string
+	}{
+		{"plan", "5.7.1 peer-private-text", 550, "mail.relay.recipient_plan"},
+		{"other enhanced code", "5.1.1 peer-private-text", 451, "mail.relay.upstream_rcpt/550"},
+		{"no enhanced code", "peer-private-text", 451, "mail.relay.upstream_rcpt/550"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f.failureText = tc.text
+			fake := startFake(t, f, "rcpt", 550, false)
+			client, s := localClient(t, f, fake.up)
+			envelope(t, client)
+			_, err := client.Data()
+			smtpCode(t, err, tc.want)
+			var pe *textproto.Error
+			errors.As(err, &pe)
+			if strings.Contains(pe.Msg, "peer-private-text") {
+				t.Fatal("peer text passed on")
+			}
+			if tc.want == 550 && (!strings.HasPrefix(pe.Msg, "5.7.1") || !strings.Contains(pe.Msg, "Workers Paid")) {
+				t.Fatalf("plan reply %q", pe.Msg)
+			}
+			status := s.Status()
+			if status.LastErr != tc.lastErr || status.Counters["sent"] != 0 {
+				t.Fatalf("status %+v", status)
+			}
+			if at := status.Info["lastPlanRefusal"]; (tc.want == 550) != (at != "") {
+				t.Fatalf("plan refusal time %q", at)
+			}
+		})
+	}
+	if !RecipientPlanRefused(upstreamError{stage: "rcpt", code: 550, enhanced: "5.7.1"}) ||
+		RecipientPlanRefused(upstreamError{stage: "mail", code: 550, enhanced: "5.7.1"}) ||
+		RecipientPlanRefused(upstreamError{stage: "rcpt", code: 550}) {
+		t.Fatal("RecipientPlanRefused")
 	}
 }

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
- * One quiet line on what Cloudflare charges: receiving is free, sending needs
- * the Workers Paid plan (3,000 mails a month included), Cloudflare's page
+ * One quiet line on what Cloudflare charges: receiving is free; on Workers
+ * Free, sending reaches only the account's verified addresses, and sending to
+ * anyone needs Workers Paid (3,000 mails a month included). Cloudflare's page
  * decides. Shown on the route step (before a choice and with Cloudflare).
  */
 import {Link} from '@synopackageland/ui'

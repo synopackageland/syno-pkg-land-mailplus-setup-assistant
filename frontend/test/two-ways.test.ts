@@ -177,12 +177,16 @@ test('the route step: each card has its mini picture and parallel copy; the plan
  }finally{h.close();vi.useRealTimers()}
 })
 
-test('the plan note: receiving free, sending on Workers Paid, Cloudflare decides, one link',()=>{
+test('the plan note: receiving free, Workers Free only to verified addresses, anyone on Workers Paid, Cloudflare decides, one link',()=>{
  for(const loc of locales){
-  expect(catalogs[loc]!['ui.pricing.note']).toMatch(/Workers/)
-  expect(catalogs[loc]!['ui.pricing.note']).toMatch(/3[,. ]?000/)
+  for(const key of ['ui.pricing.note','mail.setup.sendingPlan']){
+   expect(catalogs[loc]![key],`${loc}: ${key}`).toMatch(/Workers/)
+   expect(catalogs[loc]![key],`${loc}: ${key}`).toMatch(/3[,. ]?000/)
+   expect(catalogs[loc]![key],`${loc}: ${key}`).not.toMatch(/[.。]$|…|\.\.\./)
+  }
  }
- expect(catalogs['zh-TW']!['ui.pricing.note']).toBe('收信免費；寄信需要 Cloudflare Workers 付費方案（每月含 3,000 封）。以 Cloudflare 公告為準')
+ expect(catalogs.en!['ui.pricing.note']).toBe("Receiving is free. On the Workers Free plan, Cloudflare sends only to your verified Cloudflare addresses; sending to anyone needs Workers Paid (3,000 emails a month included). Cloudflare's own pricing applies")
+ expect(catalogs['zh-TW']!['ui.pricing.note']).toBe('收信免費。Workers 免費方案只能寄給您在 Cloudflare 驗證過的地址；要寄給任何人需要 Workers 付費方案（每月含 3,000 封）。以 Cloudflare 公告為準')
 })
 
 test.each(locales)('a Workers Free refusal of sending reads as plain words (%s)',loc=>{
